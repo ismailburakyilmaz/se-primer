@@ -1,0 +1,108 @@
+{
+  "surum": "1.0",
+  "aciklama": "Oyundaki metinlerde geçen teknik terimler. 'eslesme' listesindeki ifadeler metinde aranır ve altı noktalı gösterilir; dokununca 'tanim' açılır.",
+  "terimler": [
+    {
+      "id": "surum",
+      "terim": "Sürüm",
+      "eslesme": ["sürüm", "sürümü", "sürümüne", "sürümden"],
+      "tanim": "Uygulamanın belirli bir tarihte yayınlanan hâli. Yeni sürüm hem kodu hem de bazen veritabanını değiştirir."
+    },
+    {
+      "id": "geri_donus",
+      "terim": "Geri dönüş (rollback)",
+      "eslesme": ["geri dön", "geri dönüş", "geri dönmek"],
+      "tanim": "Uygulamayı önceki sürüme almak. Veritabanında yapılan değişiklikleri kendiliğinden geri almaz."
+    },
+    {
+      "id": "ileri_donus",
+      "terim": "İleri dönüş (roll forward)",
+      "eslesme": ["ileri dön", "ileri dönüş"],
+      "tanim": "Sorunu eski sürüme dönmek yerine, son sürüme geri gelip orada düzelterek çözmek."
+    },
+    {
+      "id": "log",
+      "terim": "Log",
+      "eslesme": ["log", "logu", "logda", "loglar", "logları", "loglarında"],
+      "tanim": "Uygulamanın çalışırken yazdığı kayıtlar. Hataların ne zaman ve neden oluştuğunu gösterir."
+    },
+    {
+      "id": "hata_orani",
+      "terim": "Hata oranı",
+      "eslesme": ["hata oranı"],
+      "tanim": "Yapılan isteklerin yüzde kaçının hatayla sonuçlandığı. Şu anki durumu gösterir, geçmişte biriken işi göstermez."
+    },
+    {
+      "id": "veritabani_degisikligi",
+      "terim": "Veritabanı değişikliği (migration)",
+      "eslesme": ["veritabanı değişikliği", "veritabanı değişikliğini"],
+      "tanim": "Bir sürümle birlikte veritabanının yapısında yapılan değişiklik; örneğin bir kolonun adını değiştirmek."
+    },
+    {
+      "id": "kolon",
+      "terim": "Kolon",
+      "eslesme": ["kolon", "kolonu", "kolonun", "kolonunu"],
+      "tanim": "Veritabanı tablosunda bir bilgi alanı; örneğin her hastanın telefon numarasının tutulduğu sütun."
+    },
+    {
+      "id": "geri_uyumlu_gorunum",
+      "terim": "Geri uyumlu görünüm",
+      "eslesme": ["geri uyumlu görünüm", "geri uyumlu"],
+      "tanim": "Yeni yapıyı eski adlarla da okunabilir gösteren veritabanı görünümü. Eski ve yeni sistemlerin bir süre birlikte çalışmasını sağlar."
+    },
+    {
+      "id": "test_ortami",
+      "terim": "Test ortamı",
+      "eslesme": ["test ortamı", "test ortamında"],
+      "tanim": "Gerçek kullanıcıları etkilemeden değişikliklerin denendiği kopya sistem."
+    },
+    {
+      "id": "canli",
+      "terim": "Canlı ortam",
+      "eslesme": ["canlıya", "canlı ortam", "canlı veritabanı"],
+      "tanim": "Gerçek kullanıcıların kullandığı sistem. Buradaki hata doğrudan insanları etkiler."
+    },
+    {
+      "id": "dagitim",
+      "terim": "Dağıtım",
+      "eslesme": ["dağıtım", "dağıtımı", "dağıtamazsınız"],
+      "tanim": "Yeni kodun canlı ortama yüklenmesi. Genellikle test ve onay adımlarından geçer."
+    },
+    {
+      "id": "kisisel_veri",
+      "terim": "Kişisel veri",
+      "eslesme": ["kişisel veri", "kişisel veriyi"],
+      "tanim": "Bir kişiyi tanımlayan her bilgi: ad soyad, telefon, kimlik numarası gibi. Sağlık bilgisiyle birlikte özel nitelikli sayılır."
+    },
+    {
+      "id": "maskeleme",
+      "terim": "Maskeleme",
+      "eslesme": ["maskele", "maskeleyen", "maskelenmiş", "maskeleme"],
+      "tanim": "Kişisel bilgiyi yıldız veya sahte değerle değiştirmek; böylece kayıt hata ayıklamada kullanılabilir ama kişi tanınmaz."
+    },
+    {
+      "id": "kvkk",
+      "terim": "KVKK",
+      "eslesme": ["KVKK"],
+      "tanim": "Kişisel Verilerin Korunması Kanunu. Bir veri ihlali en geç 72 saat içinde Kişisel Verileri Koruma Kurulu'na bildirilmelidir."
+    },
+    {
+      "id": "uzlastirma",
+      "terim": "Uzlaştırma",
+      "eslesme": ["uzlaştır", "uzlaştırma", "uzlaştırıldı", "uzlaştırmayı"],
+      "tanim": "Olaydan etkilenen kayıtları tek tek sayıp eksik kalanları tamamlamak; örneğin onay bekleyen her randevuyu işlemek."
+    },
+    {
+      "id": "devir",
+      "terim": "Devir teslim",
+      "eslesme": ["devret", "devredildi", "devir"],
+      "tanim": "Kalan işi, ne yapılması gerektiğini açıkça yazarak sorumlu ekibe aktarmak."
+    },
+    {
+      "id": "vty",
+      "terim": "VTY",
+      "eslesme": ["VTY"],
+      "tanim": "Veritabanı Yöneticisi. Canlı veritabanındaki değişiklikleri onaylayan ve uygulayan kişi."
+    }
+  ]
+}

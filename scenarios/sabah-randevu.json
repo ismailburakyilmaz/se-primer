@@ -1,0 +1,537 @@
+{
+  "id": "sabah-randevu",
+  "surum": "1.0",
+  "baslik": "Sabah Randevu Krizi",
+  "kurum": "Şifa Hastanesi",
+  "sektor": "Sağlık",
+  "kurgu_notu": "Kurum, kişiler ve sistemler kurgusaldır. Gerçek hasta verisi kullanılmaz.",
+  "ozet": "Dün gece 23:30'da randevu sisteminin v4.2 sürümü yayınlandı. Sabah 08:00'de 'Randevuyu onayla' adımı hata veriyor ve onay bekleyen hasta sayısı artıyor.",
+  "gizli_gercek": "v4.2 ile gelen veritabanı değişikliği hastalar tablosundaki hasta_tel kolonunun adını iletisim_tel yaptı. Web uygulaması yeni adı kullanıyor. Entegrasyon ekibine ait SMS onay servisi güncellenmedi ve eski adı okuyor; onay adımı bu servisi çağırdığı için hata veriyor. v4.1'e geri dönmek sorunu büyütür, çünkü v4.1 kodu da artık var olmayan hasta_tel kolonunu arar.",
+
+  "baslangic": {
+    "saat": "08:00",
+    "sure_dk": 0,
+    "butce_dk": 100,
+    "etki": 180,
+    "risk": 10,
+    "koordinasyon": 1,
+    "ilk_sahne": "S1"
+  },
+
+  "kurallar": {
+    "etki_birimi": "onay bekleyen randevu talebi",
+    "etki_artisi_dakika_basina": { "bozuk": 3, "cokmus": 6, "kismi": 0, "duzeldi": 0 },
+    "koordinasyon_seviyeleri": ["Dağınık", "Yeterli", "Güçlü"],
+    "daginik_ek_sure_dk": 5,
+    "zaman_asimi_dk": 15,
+    "zaman_asimi_mesaji": { "kisi": "mudur", "metin": "Karar bekleniyor, başhekim tekrar aradı." },
+    "karar_siniri": 8,
+    "risk_kayip_esigi": 100,
+    "aciklama": [
+      "Bir eylemin süresi boyunca etki, eylemin seçildiği sahnenin hizmet durumuna göre dakika başına artar.",
+      "Koordinasyon Dağınık (0) iken her eylemin süresine 5 dakika eklenir (çakışan müdahaleler).",
+      "Koordinasyon 0 ile 2 arasında tutulur.",
+      "Zaman aşımı: olay süresine 15 dakika eklenir, etki bu 15 dakika için normal kurala göre artar, müdür mesajı gelir, aynı sahne yeniden açılır. Zaman aşımı karar sayısına eklenir. Aynı sahne ziyaretinde ikinci kez zaman aşımı olmaz.",
+      "Bitiş kontrol sırası: kırmızı çizgi -> risk >= 100 veya sure_dk > butce_dk -> başarı bayrakları -> karar sınırı."
+    ]
+  },
+
+  "kisiler": {
+    "mudur": "Bilgi İşlem Müdürü",
+    "hemsire": "Poliklinik Sorumlu Hemşiresi",
+    "vty": "Veritabanı Yöneticisi",
+    "entegrasyon": "Entegrasyon Ekibi"
+  },
+
+  "basari_kosulu": {
+    "bayraklar": ["hizmet_duzeldi", "uzlastirildi", "devredildi"],
+    "aciklama": "Üç bayrak da true ve sure_dk <= butce_dk ise 'Kontrol altına alındı'."
+  },
+
+  "sahneler": [
+    {
+      "id": "S1",
+      "baslik": "Onay ekranı hata veriyor",
+      "hizmet": "bozuk",
+      "kanitlar": [
+        {
+          "id": "S1_k1",
+          "etiket": "Doğrulandı",
+          "metin_backend": "Onay adımında hata oranı sürümden sonra %0'dan %38'e çıktı.",
+          "metin_lider": "Backend ekibi: onay adımında hata oranı sürümden sonra %38'e çıktı."
+        },
+        {
+          "id": "S1_k2",
+          "etiket": "Belirti",
+          "metin_backend": "SMS onay servisi logu: column \"hasta_tel\" does not exist",
+          "metin_lider": "Entegrasyon kanalı: SMS onay servisi bir veritabanı hatası veriyor."
+        },
+        {
+          "id": "S1_k3",
+          "etiket": "Belirti",
+          "metin_backend": "Rapor sunucusunda disk doluluk uyarısı: %85.",
+          "metin_lider": "Altyapı ekibi: rapor sunucusunda disk doluluk uyarısı var (%85)."
+        }
+      ],
+      "mesajlar": [
+        { "kisi": "mudur", "metin": "Son sürüm bozdu belli, hemen geri alın." },
+        { "kisi": "hemsire", "metin": "Hastalar randevularının onaylanmadığını söylüyor, sıra uzuyor." }
+      ],
+      "kayitli_anlatim": "Saat sekiz. Dün gece 23:30'da randevu sisteminin 4.2 sürümü yayınlandı. Poliklinikte sıra uzuyor ve 'Randevuyu onayla' adımı hata veriyor. Telefonun art arda titriyor; herkes senden bir şey yapmanı bekliyor.",
+      "hazir_ipucu": "Hata ne zaman başladı ve o sırada sistemde ne değişti? Bir şeyi geri almadan önce neyin değiştiğini bilmek işine yarar mı?",
+      "ogrenme_odagi": "Bir sürümü geri almadan önce, o sürümle veritabanında da bir değişiklik yapılıp yapılmadığını anlamak.",
+      "yasak_kelimeler": ["iletisim_tel", "yeniden adlandır", "adı değiştirildi", "geri uyumlu", "eski adı okuyor"],
+      "eylemler": [
+        {
+          "id": "S1_geri_don",
+          "metin_backend": "v4.1 sürümüne geri dön",
+          "metin_lider": "Ekibe v4.1 sürümüne dönme talimatı ver",
+          "tur": "tehlikeli",
+          "sure_dk": 10,
+          "etkiler": { "risk": 10, "koordinasyon": { "backend": 0, "lider": 0 }, "bayraklar": {} },
+          "sonraki": "S1R",
+          "ne_oldu": "v4.1 çalıştı ama bu kez bütün randevu ekranları hata vermeye başladı.",
+          "neden_oldu": "v4.2'deki veritabanı değişikliği geri alınmadı; eski kod artık var olmayan bir kolonu arıyor.",
+          "neden_oldu_uzun": "Geri dönüş yalnızca uygulama kodunu eski hâline getirir. Veritabanında yapılan değişiklikler kendiliğinden geri alınmaz. v4.2 bir kolonun adını değiştirmişti; v4.1 kodu hâlâ eski adı aradığı için şimdi her ekran hata veriyor.",
+          "degerlendirme": {
+            "o_an": "Hata sürümden hemen sonra başlamıştı; müdür geri dönüş istiyordu. Bu makul bir ilk düşünceydi.",
+            "sonradan": "Sürüm bir kolonun adını değiştirmişti; eski kod da bu yüzden çalışamadı.",
+            "varsayim": "Son sürümü geri almanın her şeyi önceki hâline döndüreceğini varsaydın."
+          }
+        },
+        {
+          "id": "S1_incele",
+          "metin_backend": "Değişiklik kaydını ve veritabanı değişikliğini incele",
+          "metin_lider": "Backend'den değişiklik kaydını, VTY'den veritabanı değişikliğini iste; müdüre 30 dakika içinde güncelleme sözü ver",
+          "tur": "onerilen",
+          "sure_dk": 15,
+          "etkiler": { "risk": 0, "koordinasyon": { "backend": 0, "lider": 1 }, "bayraklar": {} },
+          "sonraki": "S2",
+          "ne_oldu": "Değişiklik kaydında v4.2'nin bir kolonun adını değiştirdiği görüldü. SMS onay servisi hâlâ eski adı kullanıyor.",
+          "neden_oldu": "Hatanın başladığı anda neyin değiştiğine baktın; bu, belirtiyi doğrulanmış bir nedene çevirdi.",
+          "neden_oldu_uzun": "Logdaki 'kolon bulunamadı' hatası tek başına bir belirtiydi. Değişiklik kaydı bunun nedenini doğruladı: kolonun adı değişmiş, ama bu kolonu okuyan başka bir servis güncellenmemiş. Artık geri dönüşün neden işe yaramayacağını da biliyorsun.",
+          "degerlendirme": {
+            "o_an": "Hata sürümden sonra başlamıştı ama nedenini bilmiyordun.",
+            "sonradan": "Kolon adı değişmiş, SMS servisi eski adı okuyordu.",
+            "varsayim": "Harekete geçmeden önce 15 dakika incelemenin, yanlış bir müdahaleden daha ucuz olacağını varsaydın."
+          }
+        },
+        {
+          "id": "S1_disk",
+          "metin_backend": "Disk uyarısını çöz",
+          "metin_lider": "Herkes kendi bildiği yerden baksın",
+          "tur": "geciktiren",
+          "sure_dk": 20,
+          "etkiler": { "risk": 0, "koordinasyon": { "backend": 0, "lider": -1 }, "bayraklar": {} },
+          "sonraki": "S1",
+          "ek_mesaj": { "kisi": "hemsire", "metin": "Hâlâ onay gelmiyor, bekleyen hasta sayısı arttı." },
+          "ne_oldu": "Yirmi dakika geçti; onay hatası aynen sürüyor.",
+          "neden_oldu": "Disk uyarısı gerçekti ama onay hatasıyla ilgisi yoktu. Bekleyen talepler bu sürede artmaya devam etti.",
+          "neden_oldu_uzun": "Kriz anında her alarm aynı önemde görünür. Disk uyarısı hatayla aynı saatlerde başlamamıştı ve onay adımını etkileyen bir bileşende değildi. Takım liderinin 'herkes baksın' demesi ise aynı yere birden fazla kişinin müdahale etmesine yol açar.",
+          "degerlendirme": {
+            "o_an": "Ekranda iki uyarı vardı; hangisinin hataya bağlı olduğu belli değildi.",
+            "sonradan": "Disk uyarısı yanıltıcıydı; onay hatasıyla ilgisi yoktu.",
+            "varsayim": "Görünen her uyarının mevcut sorunla ilgili olduğunu varsaydın."
+          }
+        }
+      ]
+    },
+    {
+      "id": "S1R",
+      "baslik": "Geri dönüş her şeyi kapattı",
+      "hizmet": "cokmus",
+      "kanitlar": [
+        {
+          "id": "S1R_k1",
+          "etiket": "Doğrulandı",
+          "metin_backend": "v4.1 çalışıyor ama bütün randevu ekranları hata veriyor.",
+          "metin_lider": "Backend ekibi: v4.1'e dönüldü, şimdi bütün randevu ekranları hata veriyor."
+        },
+        {
+          "id": "S1R_k2",
+          "etiket": "Doğrulandı",
+          "metin_backend": "Log: v4.1 hasta_tel kolonunu arıyor; veritabanında yalnızca iletisim_tel var.",
+          "metin_lider": "VTY: eski kod bir kolonu arıyor ama veritabanında o kolonun adı değişmiş."
+        }
+      ],
+      "mesajlar": [
+        { "kisi": "hemsire", "metin": "Poliklinikte artık kimse randevu alamıyor!" },
+        { "kisi": "mudur", "metin": "Ne oldu? Daha da kötüleşti." }
+      ],
+      "kayitli_anlatim": "Geri dönüş tamamlandı ama ekranlar kırmızıya döndü. Artık yalnızca onay değil, randevu alma da çalışmıyor. Poliklinik bankosunda kalabalık büyüyor.",
+      "hazir_ipucu": "Kod eski hâline döndü ama veritabanı hangi hâlde? Önce hizmeti en son çalışan hâline getirmenin yolu ne olabilir?",
+      "ogrenme_odagi": "Uygulama kodu ve veritabanı şeması ayrı ayrı değişir; önce hizmeti en son çalışan hâline döndürmek, sonra nedeni araştırmak.",
+      "yasak_kelimeler": ["geri uyumlu", "eski adı okuyor"],
+      "eylemler": [
+        {
+          "id": "S1R_ileri_don",
+          "metin_backend": "v4.2'ye ileri dön, sonra nedeni araştır",
+          "metin_lider": "Geri dönüşü durdur, v4.2'ye ileri dönülmesini iste",
+          "tur": "onerilen",
+          "toparlanma": true,
+          "sure_dk": 10,
+          "etkiler": { "risk": 0, "koordinasyon": { "backend": 0, "lider": 0 }, "bayraklar": {} },
+          "sonraki": "S2",
+          "ne_oldu": "v4.2'ye dönüldü; randevu alma yeniden çalışıyor, onay adımı hâlâ hata veriyor. Değişiklik kaydı kolon adının değiştiğini gösteriyor.",
+          "neden_oldu": "Veritabanıyla uyumlu olan sürüme döndün; böylece büyüyen kesintiyi durdurdun.",
+          "neden_oldu_uzun": "Bir geri dönüş işleri kötüleştirdiğinde en hızlı toparlanma genellikle bilinen son çalışan duruma dönmektir. Veritabanı v4.2'ye göre değiştiği için en son uyumlu kod da v4.2'dir.",
+          "degerlendirme": {
+            "o_an": "Bütün ekranlar çökmüştü ve log eski kodun bir kolonu bulamadığını gösteriyordu.",
+            "sonradan": "Veritabanı yalnızca v4.2 ile uyumluydu; ileri dönüş doğru toparlanmaydı.",
+            "varsayim": "Kesintiyi önce durdurup nedeni sonra aramanın daha güvenli olduğunu varsaydın."
+          }
+        },
+        {
+          "id": "S1R_semayi_geri_al",
+          "metin_backend": "Veritabanı değişikliğini de geri al",
+          "metin_lider": "Veritabanı değişikliği de geri alınsın",
+          "tur": "tehlikeli",
+          "sure_dk": 15,
+          "etkiler": { "risk": 15, "koordinasyon": { "backend": 0, "lider": 0 }, "bayraklar": {} },
+          "sonraki": "S1R",
+          "ek_mesaj": { "kisi": "vty", "metin": "Durdurdum. Bu geri alma, 23:30'dan beri alınan 420 randevunun telefon bilgisini silerdi. Onaysız bunu yapamayız." },
+          "ne_oldu": "Veritabanı yöneticisi işlemi başlamadan durdurdu. On beş dakika kaybedildi, ekranlar hâlâ çökük.",
+          "neden_oldu": "Şema değişikliğini geri almak, gece boyunca yeni kolona yazılan verileri silerdi; bu canlı veritabanında onaysız yapılamaz.",
+          "neden_oldu_uzun": "Veritabanı değişikliklerini geri almak, kod geri dönüşünden çok daha risklidir: değişiklikten sonra yazılan veriler kaybolabilir. Canlı veritabanında bu tür işlemler veritabanı yöneticisinin onayı ve yedek planıyla yapılır.",
+          "degerlendirme": {
+            "o_an": "Kodun eski hâli veritabanıyla uyumsuzdu; ikisini birlikte geri almak mantıklı görünüyordu.",
+            "sonradan": "Geri alma 420 randevunun telefon bilgisini silecekti.",
+            "varsayim": "Veritabanı değişikliğinin de kod gibi kayıpsız geri alınabileceğini varsaydın."
+          }
+        }
+      ]
+    },
+    {
+      "id": "S2",
+      "baslik": "Kaynak bulundu",
+      "hizmet": "bozuk",
+      "kanitlar": [
+        {
+          "id": "S2_k1",
+          "etiket": "Doğrulandı",
+          "metin_backend": "v4.2 veritabanı değişikliği: hasta_tel kolonunun adı iletisim_tel yapıldı.",
+          "metin_lider": "VTY: v4.2 ile bir kolonun adı değişti (hasta_tel → iletisim_tel)."
+        },
+        {
+          "id": "S2_k2",
+          "etiket": "Doğrulandı",
+          "metin_backend": "SMS onay servisi hâlâ hasta_tel kolonunu okuyor.",
+          "metin_lider": "Entegrasyon ekibi: SMS onay servisi eski kolon adını kullanıyor."
+        },
+        {
+          "id": "S2_k3",
+          "etiket": "Doğrulandı",
+          "metin_backend": "SMS onay servisi Entegrasyon Ekibi'ne ait; senin bu servise dağıtım yetkin yok.",
+          "metin_lider": "SMS onay servisi Entegrasyon Ekibi'ne ait; dağıtım onları gerektirir."
+        }
+      ],
+      "mesajlar": [
+        { "kisi": "hemsire", "metin": "Kuyruk uzuyor, hastalar bankoya gelip soruyor." }
+      ],
+      "kayitli_anlatim": "Artık sorunun kaynağını biliyorsun: bir kolonun adı değişti, ama SMS onay servisi bunu bilmiyor. Servis başka bir ekibin. Bekleyen hasta sayısı her dakika artıyor.",
+      "hazir_ipucu": "Başka ekibin servisine dokunmadan, kendi tarafında onu eski adla çalıştırmanın bir yolu olabilir mi? Belirtiyi gizlemek ile sorunu çözmek arasındaki fark ne?",
+      "ogrenme_odagi": "Başka ekibin servisine dokunmadan kendi tarafında geri uyumlu geçici bir çözüm üretmek; belirtiyi gizlemek ile sorunu gidermek arasındaki farkı görmek.",
+      "yasak_kelimeler": [],
+      "eylemler": [
+        {
+          "id": "S2_gorunum",
+          "metin_backend": "Eski kolon adını yeni kolona yönlendiren geri uyumlu bir görünüm hazırla, test ortamında dene, VTY onayıyla uygula",
+          "metin_lider": "VTY ve backend'e geri uyumlu görünümü birlikte uygulat; Entegrasyon Ekibi'ni çağır",
+          "tur": "onerilen",
+          "sure_dk": 25,
+          "etkiler": { "risk": 0, "koordinasyon": { "backend": 1, "lider": 1 }, "bayraklar": { "hizmet_duzeldi": true } },
+          "sonraki": "S3",
+          "ne_oldu": "Görünüm test ortamında çalıştı ve canlıya alındı. SMS onay servisi yeniden yanıt veriyor; yeni onaylar geçiyor.",
+          "neden_oldu": "Eski adı okuyan servise, yeni kolonu eski adla gösteren bir köprü verdin. Kimsenin kodu değişmeden hizmet geri geldi.",
+          "neden_oldu_uzun": "Geri uyumlu görünüm, eski ve yeni yapının bir süre birlikte çalışmasını sağlar. Bu geçici bir çözümdür: asıl düzeltme, SMS servisinin yeni kolon adına geçmesidir ve bu iş Entegrasyon Ekibi'ne devredilmelidir.",
+          "degerlendirme": {
+            "o_an": "SMS servisine yetkin yoktu; kolon adının değiştiğini biliyordun.",
+            "sonradan": "Geçici çözüm onayları geri getirdi; kalıcı düzeltme hâlâ gerekli.",
+            "varsayim": "Test ortamında denemenin 25 dakikaya değeceğini varsaydın."
+          }
+        },
+        {
+          "id": "S2_sms_kapat",
+          "metin_backend": "Onay akışında SMS adımını kapat",
+          "metin_lider": "SMS adımını kapattır",
+          "tur": "geciktiren",
+          "sure_dk": 5,
+          "etkiler": { "risk": 0, "koordinasyon": { "backend": 0, "lider": 0 }, "bayraklar": {} },
+          "sonraki": "S2R",
+          "ne_oldu": "Onay adımı artık hata vermiyor; randevular onaylanıyor.",
+          "neden_oldu": "Hata veren adımı devreden çıkardın; ekran düzeldi ama hastalara SMS gitmiyor.",
+          "neden_oldu_uzun": "Bir adımı kapatmak hatayı görünmez yapar ama işin o adımda yaptığı şeyi de durdurur. Burada SMS, hastanın randevu saatini öğrenme yoluydu.",
+          "degerlendirme": {
+            "o_an": "Onay ekranı hata veriyordu ve SMS servisine erişimin yoktu.",
+            "sonradan": "SMS almayan hastalar randevu saatlerini bilmiyordu.",
+            "varsayim": "Ekranın düzelmesinin hastaların da sorunsuz olduğu anlamına geldiğini varsaydın."
+          }
+        },
+        {
+          "id": "S2_kendin_duzelt",
+          "metin_backend": "SMS servisini kendin düzeltip canlıya al",
+          "metin_lider": "Entegrasyon Ekibi'ni beklemeden SMS servisini backend'e düzelttir",
+          "tur": "tehlikeli",
+          "sure_dk": 10,
+          "etkiler": { "risk": 10, "koordinasyon": { "backend": -1, "lider": -1 }, "bayraklar": {} },
+          "sonraki": "S2",
+          "ek_mesaj": { "kisi": "entegrasyon", "metin": "Bu servisin sahibi biziz, testsiz dağıtamazsınız. Dağıtımı durdurduk." },
+          "ne_oldu": "Dağıtım Entegrasyon Ekibi tarafından durduruldu. On dakika kaybedildi; ekipler arasında gerginlik var.",
+          "neden_oldu": "Yetkin olmayan bir servisi testsiz değiştirmeye çalıştın; sahibi olan ekip bunu engelledi.",
+          "neden_oldu_uzun": "Kriz anında başka ekibin sistemine müdahale etmek hızlı görünür ama o sistemin bağımlılıklarını ve testlerini bilmezsin. Doğru yol, o ekibi çağırmak ve kendi tarafında güvenli bir geçici çözüm üretmektir.",
+          "degerlendirme": {
+            "o_an": "Hatanın SMS servisinde olduğunu biliyordun; düzeltme küçük görünüyordu.",
+            "sonradan": "Servisin sahibi ve dağıtım süreci başka bir ekibe aitti.",
+            "varsayim": "Küçük bir düzeltmenin yetki ve test gerektirmeyeceğini varsaydın."
+          }
+        }
+      ]
+    },
+    {
+      "id": "S2R",
+      "baslik": "SMS'siz onay geri tepti",
+      "hizmet": "kismi",
+      "giris_etkisi": { "etki": 90 },
+      "kanitlar": [
+        {
+          "id": "S2R_k1",
+          "etiket": "Doğrulandı",
+          "metin_backend": "Onaylar geçiyor ama SMS gönderimi kapalı; sabahki onayların hiçbiri hastaya ulaşmadı.",
+          "metin_lider": "Backend ekibi: onaylar geçiyor ama hiçbir hastaya SMS gitmedi."
+        },
+        {
+          "id": "S2R_k2",
+          "etiket": "Doğrulandı",
+          "metin_backend": "SMS onay servisi hâlâ eski kolon adını okuyor.",
+          "metin_lider": "Entegrasyon ekibi: SMS servisi hâlâ eski kolon adını kullanıyor."
+        }
+      ],
+      "mesajlar": [
+        { "kisi": "hemsire", "metin": "Sabahki hastalar SMS almadığı için saatini bilmiyor, poliklinik karıştı." }
+      ],
+      "kayitli_anlatim": "Ekran düzelmiş görünüyordu ama poliklinikten gelen haber farklı: SMS almayan hastalar ya erken geldi ya hiç gelmedi. Sorun ortadan kalkmamış, yer değiştirmiş.",
+      "hazir_ipucu": "Ekranı düzelten şey SMS'i de düzeltti mi? SMS servisini değiştirmeden onu yeniden çalıştırmanın yolu ne olabilir?",
+      "ogrenme_odagi": "Belirtiyi gizleyen geçici çözümün geri tepmesi; asıl nedeni gideren güvenli çözüme dönmek.",
+      "yasak_kelimeler": [],
+      "eylemler": [
+        {
+          "id": "S2R_gorunum",
+          "metin_backend": "Geri uyumlu görünümü uygula ve SMS adımını yeniden aç",
+          "metin_lider": "Geri uyumlu görünümü uygulat, SMS adımını açtır",
+          "tur": "onerilen",
+          "toparlanma": true,
+          "sure_dk": 25,
+          "etkiler": { "risk": 0, "koordinasyon": { "backend": 0, "lider": 0 }, "bayraklar": { "hizmet_duzeldi": true } },
+          "sonraki": "S3",
+          "ne_oldu": "Görünüm uygulandı, SMS adımı yeniden açıldı; yeni onaylarda SMS gidiyor.",
+          "neden_oldu": "Sorunu gizleyen geçici çözüm yerine asıl uyumsuzluğu gideren köprüyü kurdun.",
+          "neden_oldu_uzun": "Geri uyumlu görünüm, SMS servisinin eski adla çalışmasını sağladı. Ancak sabah SMS almamış hastalar hâlâ bekliyor; bunlar uzlaştırma sırasında ele alınmalı.",
+          "degerlendirme": {
+            "o_an": "Ekran düzelmişti ama hastalar SMS almıyordu.",
+            "sonradan": "Görünüm SMS'i geri getirdi; sabahki hastalar için ayrıca işlem gerekiyordu.",
+            "varsayim": "Asıl uyumsuzluğu gidermenin ek 25 dakikaya değeceğini varsaydın."
+          }
+        },
+        {
+          "id": "S2R_telefon",
+          "metin_backend": "Hemşirelerin hastaları telefonla aramasını iste",
+          "metin_lider": "Hemşirelerin hastaları telefonla aramasını iste",
+          "tur": "geciktiren",
+          "sure_dk": 30,
+          "etkiler": { "risk": 0, "koordinasyon": { "backend": 0, "lider": 0 }, "bayraklar": {} },
+          "sonraki": "S2R",
+          "ek_mesaj": { "kisi": "hemsire", "metin": "Otuz kişiyi aradık ama yeni onaylar da SMS'siz gidiyor, bu böyle bitmez." },
+          "ne_oldu": "Hemşireler yarım saat telefon başında kaldı; birkaç hastaya ulaşıldı ama yeni onaylar da SMS'siz gidiyor.",
+          "neden_oldu": "Elle arama belirtiyi hafifletti ama SMS adımı kapalı kaldığı için sorun her yeni onayla büyüyor.",
+          "neden_oldu_uzun": "İnsan gücüyle yapılan geçici çözümler kısa süre işe yarar ama sistemdeki nedeni gidermez. Üstelik sahadaki ekibin asıl işinden zaman alır.",
+          "degerlendirme": {
+            "o_an": "Hastaların saatlerini öğrenmesi acildi.",
+            "sonradan": "SMS adımı kapalı kaldıkça sorun büyüyordu.",
+            "varsayim": "Elle aramanın sistem düzelene kadar yeteceğini varsaydın."
+          }
+        }
+      ]
+    },
+    {
+      "id": "S3",
+      "baslik": "Log isteği (KVKK)",
+      "hizmet": "duzeldi",
+      "kanitlar": [
+        {
+          "id": "S3_k1",
+          "etiket": "Doğrulandı",
+          "metin_backend": "Onay adımında hata oranı %0'a indi.",
+          "metin_lider": "Backend ekibi: onay hataları durdu."
+        },
+        {
+          "id": "S3_k2",
+          "etiket": "Doğrulandı",
+          "metin_backend": "Hata loglarında hasta adı soyadı ve telefon numarası açık metin olarak duruyor.",
+          "metin_lider": "Backend ekibi: hata loglarında hasta adları ve telefon numaraları var."
+        },
+        {
+          "id": "S3_k3",
+          "etiket": "Doğrulandı",
+          "metin_backend": "Entegrasyon Ekibi kalıcı düzeltme için hata loglarını istiyor.",
+          "metin_lider": "Entegrasyon Ekibi kalıcı düzeltme için hata loglarını istiyor."
+        }
+      ],
+      "mesajlar": [
+        { "kisi": "mudur", "metin": "Logu hemen genel kanala at, herkes baksın, bir an önce kapatalım." },
+        { "kisi": "entegrasyon", "metin": "Kalıcı düzeltme için hata loglarına ihtiyacımız var." }
+      ],
+      "kayitli_anlatim": "Onaylar yeniden geçiyor. Şimdi kalıcı düzeltme için Entegrasyon Ekibi logları istiyor. Logları açtığında hasta adlarını ve telefon numaralarını görüyorsun. Müdür acele ediyor.",
+      "hazir_ipucu": "Bu logda kimin bilgisi var ve onu kimler görecek? Bir sütunu silmek kayıttaki bütün kişisel bilgiyi temizler mi?",
+      "ogrenme_odagi": "Kişisel veri içeren kaydı paylaşmadan önce maskelemek; kısmi silmenin yetmeyeceğini ve kanalın kime açık olduğunu düşünmek.",
+      "yasak_kelimeler": [],
+      "eylemler": [
+        {
+          "id": "S3_maskele",
+          "metin_backend": "Ad ve telefonu maskeleyen betiği çalıştır, logu yalnızca olay kanalına koy",
+          "metin_lider": "Maskelenmiş logun yalnızca olay kanalına konmasını iste",
+          "tur": "onerilen",
+          "sure_dk": 15,
+          "etkiler": { "risk": 0, "koordinasyon": { "backend": 0, "lider": 0 }, "bayraklar": {} },
+          "sonraki": "S4",
+          "ne_oldu": "Maskelenmiş log olay kanalına kondu; Entegrasyon Ekibi kalıcı düzeltmeye başladı.",
+          "neden_oldu": "Ekibin ihtiyaç duyduğu hata bilgisini kişisel veri olmadan ve yalnızca ilgili kişilere verdin.",
+          "neden_oldu_uzun": "Hata ayıklamak için çoğu zaman kişinin kim olduğu değil, hatanın nasıl oluştuğu gerekir. Maskeleme ve erişimi sınırlı bir kanal, KVKK kapsamında hem veri en aza indirme hem de erişim kontrolü sağlar.",
+          "degerlendirme": {
+            "o_an": "Logda hasta adları vardı ve müdür acele ediyordu.",
+            "sonradan": "Kişisel veri paylaşılmadan kalıcı düzeltme başladı.",
+            "varsayim": "15 dakikalık maskelemenin, olası bir veri ihlalinden çok daha ucuz olduğunu varsaydın."
+          }
+        },
+        {
+          "id": "S3_genel_kanal",
+          "metin_backend": "Telefon sütununu silip logu genel kanala at",
+          "metin_lider": "Telefonu silip logun genel kanala atılmasını onayla",
+          "tur": "kirmizi_cizgi",
+          "sure_dk": 5,
+          "etkiler": { "risk": 90, "koordinasyon": { "backend": 0, "lider": 0 }, "bayraklar": {} },
+          "sonraki": "SON_IHLAL",
+          "ne_oldu": "Log genel kanala gönderildi. Kanalda hastaneden yüzlerce kişi var ve logda hasta adları soyadları duruyor.",
+          "neden_oldu": "Telefonu silmek kişisel veriyi temizlemedi; ad soyad hâlâ logdaydı ve kanal herkese açıktı.",
+          "neden_oldu_uzun": "Kişisel veri yalnızca telefon numarası değildir; ad soyad da bir kişiyi tanımlar. Sağlık verisiyle birlikte paylaşılması özel nitelikli kişisel verinin ifşasıdır ve geri alınamaz.",
+          "degerlendirme": {
+            "o_an": "Telefon numarasını sildiğin için logun güvenli olduğunu düşündün; müdür acele ediyordu.",
+            "sonradan": "Ad soyad logda kalmıştı; genel kanala gönderilen veri geri alınamaz.",
+            "varsayim": "Bir sütunu silmenin kişisel veriyi temizlemeye yettiğini varsaydın."
+          }
+        },
+        {
+          "id": "S3_sayilar",
+          "metin_backend": "Log yerine hata sayılarını ve örnek hata kodunu paylaş",
+          "metin_lider": "Yalnızca hata sayılarının ve örnek hata kodunun paylaşılmasını iste",
+          "tur": "kabul_edilebilir",
+          "sure_dk": 5,
+          "etkiler": { "risk": 0, "koordinasyon": { "backend": 0, "lider": 0 }, "bayraklar": {} },
+          "sonraki": "S4",
+          "ne_oldu": "Entegrasyon Ekibi sayılarla ve hata koduyla çalışmaya başladı; ayrıntı eksik olduğu için kalıcı düzeltme yavaşlayacak.",
+          "neden_oldu": "Kişisel veri riskini tamamen ortadan kaldırdın ama ekibe daha az bilgi verdin.",
+          "neden_oldu_uzun": "Hiç kişisel veri paylaşmamak güvenlidir ama hata ayıklamayı zorlaştırabilir. Maskeleme, hem güvenli hem de yeterli bilgi veren orta yoldur.",
+          "degerlendirme": {
+            "o_an": "Logda hasta adları vardı.",
+            "sonradan": "Kişisel veri korundu; kalıcı düzeltme daha az bilgiyle yavaş ilerledi.",
+            "varsayim": "Hata kodunun kalıcı düzeltme için yeterli olacağını varsaydın."
+          }
+        }
+      ]
+    },
+    {
+      "id": "S4",
+      "baslik": "Doğrula ve devret",
+      "hizmet": "duzeldi",
+      "kanitlar": [
+        {
+          "id": "S4_k1",
+          "etiket": "Doğrulandı",
+          "metin_backend": "Onay adımında hata oranı %0.",
+          "metin_lider": "Backend ekibi: onay adımı sorunsuz çalışıyor."
+        },
+        {
+          "id": "S4_k2",
+          "etiket": "Doğrulandı",
+          "metin_backend": "'Onay bekliyor' durumunda hâlâ talepler var (sayı: etki göstergesi).",
+          "metin_lider": "Backend ekibi: onay bekleyen talepler hâlâ duruyor (sayı: etki göstergesi)."
+        },
+        {
+          "id": "S4_k3",
+          "etiket": "Doğrulandı",
+          "metin_backend": "SMS onay servisi hâlâ eski kolon adını kullanıyor; görünüm geçici bir çözüm.",
+          "metin_lider": "Entegrasyon Ekibi: kalıcı düzeltme henüz yapılmadı, görünüm geçici."
+        }
+      ],
+      "mesajlar": [
+        { "kisi": "mudur", "metin": "Hata oranı sıfır, kapatıyor muyuz?" }
+      ],
+      "kayitli_anlatim": "Grafikler yeşile döndü ve müdür olayı kapatmak istiyor. Ama sabahtan beri onay bekleyen talepler hâlâ sistemde duruyor ve SMS servisi geçici bir köprüyle çalışıyor.",
+      "hazir_ipucu": "Hata oranının sıfır olması, sabahtan beri bekleyen hastaların işinin bittiği anlamına mı geliyor? Geçici çözümü kalıcı hâle kim getirecek?",
+      "ogrenme_odagi": "Hata oranının düşmesi işin bittiği anlamına gelmez; bekleyen kayıtları uzlaştırmak ve kalan işi doğru ekibe devretmek.",
+      "yasak_kelimeler": [],
+      "eylemler": [
+        {
+          "id": "S4_uzlastir",
+          "metin_backend": "Bekleyen talepleri onayla, SMS'leri yeniden gönder, sayıları uzlaştır; durum notu yazıp kalıcı düzeltmeyi Entegrasyon Ekibi'ne devret",
+          "metin_lider": "Uzlaştırmayı ata, müdüre kapanış notu yaz, kalıcı düzeltmeyi Entegrasyon Ekibi'ne devret",
+          "tur": "onerilen",
+          "sure_dk": 20,
+          "etkiler": { "risk": 0, "koordinasyon": { "backend": 1, "lider": 1 }, "bayraklar": { "uzlastirildi": true, "devredildi": true } },
+          "etki_sifirla": true,
+          "sonraki": "BITIS",
+          "ne_oldu": "Bekleyen talepler onaylandı ve SMS'ler gönderildi; sayılar tuttu. Durum notu yazıldı, kalıcı düzeltme Entegrasyon Ekibi'nde.",
+          "neden_oldu": "Hizmetin düzelmesini yeterli saymadın; geride kalan işi bitirdin ve kalan sorumluluğu sahibine devrettin.",
+          "neden_oldu_uzun": "Bir olay, etkisi giderildiğinde ve kalan iş açıkça sahiplendirildiğinde kapanır. Uzlaştırma yapılmasaydı sabahtan beri bekleyen hastalar kaybolacaktı; devir yapılmasaydı geçici görünüm aylarca kalabilirdi.",
+          "degerlendirme": {
+            "o_an": "Hata oranı sıfırdı ama bekleyen talepler duruyordu.",
+            "sonradan": "Bütün talepler uzlaştırıldı; kalıcı düzeltmenin sahibi belli.",
+            "varsayim": "Olayın, kalan iş sahiplendirilmeden kapanmış sayılmayacağını varsaydın."
+          }
+        },
+        {
+          "id": "S4_kapat",
+          "metin_backend": "Hata oranı sıfır, olayı kapat",
+          "metin_lider": "Hata oranı sıfır, olayı kapat",
+          "tur": "geciktiren",
+          "sure_dk": 12,
+          "etkiler": { "risk": 0, "koordinasyon": { "backend": 0, "lider": 0 }, "bayraklar": {} },
+          "sonraki": "S4",
+          "ek_mesaj": { "kisi": "hemsire", "metin": "Hâlâ onay bekleyen yüzlerce hasta var, onlara ne olacak?" },
+          "ne_oldu": "Olay kapatıldı. On dakika sonra poliklinikten itiraz geldi; bekleyen talepler hâlâ orada ve olay yeniden açıldı.",
+          "neden_oldu": "Hata oranı yeni işlemleri gösteriyordu; sabahtan beri biriken talepleri göstermiyordu.",
+          "neden_oldu_uzun": "Gösterge panelleri çoğu zaman şu anki durumu gösterir, geçmişte biriken işi değil. Kapatmadan önce olayın etkilediği kayıtların sayımı yapılmalıdır.",
+          "degerlendirme": {
+            "o_an": "Hata grafiği sıfıra inmişti; müdür kapatmak istiyordu.",
+            "sonradan": "Sabahtan beri biriken talepler hâlâ bekliyordu.",
+            "varsayim": "Hata oranı sıfırsa işin bittiğini varsaydın."
+          }
+        }
+      ]
+    }
+  ],
+
+  "sonlar": {
+    "alindi": {
+      "baslik": "Kontrol altına alındı",
+      "damga": "KONTROL ALTINA ALINDI",
+      "aciklama": "Onaylar yeniden çalışıyor, bekleyen talepler uzlaştırıldı ve kalıcı düzeltme Entegrasyon Ekibi'ne devredildi.",
+      "ilke": "Geri dönmeden önce veritabanının da geri dönüp dönmediğini kontrol et."
+    },
+    "alinamadi": {
+      "baslik": "Kontrol altına alınamadı",
+      "damga": "KONTROL ALTINA ALINAMADI",
+      "nedenler": {
+        "sure": "Olay 100 dakikalık bütçeyi aştı; bekleyen hastalar bu sürede randevularını kaçırdı.",
+        "risk": "Veri riski kabul edilemez seviyeye çıktı.",
+        "karar_siniri": "Sekiz karar içinde olay toparlanamadı; mevcut durumla devredildi."
+      },
+      "ilke": "Önce etkiyi durdur, sonra kalıcı çözümü ara; her kontrolün ve her yanlış müdahalenin zaman bedeli vardır."
+    },
+    "ihlal": {
+      "baslik": "Veri ihlali",
+      "damga": "VERİ İHLALİ",
+      "aciklama": "Hasta adları ve soyadları genel kanala gönderildi. Telefon sütununu silmek kişisel veriyi temizlemedi. KVKK'ya göre veri ihlali en geç 72 saat içinde Kişisel Verileri Koruma Kurulu'na bildirilmelidir.",
+      "ilke": "Kişisel veri içeren bir kaydı paylaşmadan önce maskele; bir sütunu silmek yetmez."
+    }
+  }
+}
