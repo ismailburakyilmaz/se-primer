@@ -1,0 +1,8 @@
+{
+  "name": "SE Primer",
+  "description": "Yazılım mühendisleri için interaktif olay müdahale ve kriz simülasyonu.",
+  "version": "1.0.0",
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
