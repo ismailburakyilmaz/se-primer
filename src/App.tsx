@@ -22,6 +22,7 @@ export const App: React.FC = () => {
 
   // Game state
   const [currentSahneId, setCurrentSahneId] = useState<string>('S1');
+  const [ziyaret, setZiyaret] = useState<number>(0);
   const [sureDk, setSureDk] = useState<number>(0);
   const [etki, setEtki] = useState<number>(180);
   const [maxEtki, setMaxEtki] = useState<number>(180);
@@ -37,6 +38,11 @@ export const App: React.FC = () => {
 
   // What Happened modal state
   const [lastChosenEylem, setLastChosenEylem] = useState<Eylem | null>(null);
+  const [lastEvaluatedActionInfo, setLastEvaluatedActionInfo] = useState<{
+    secilen_eylem_metni: string;
+    ne_oldu: string;
+    neden_oldu: string;
+  } | null>(null);
   const [isWhatHappenedOpen, setIsWhatHappenedOpen] = useState<boolean>(false);
   const [pendingStep, setPendingStep] = useState<StepResult | null>(null);
   const [openTutorOfferDirectly, setOpenTutorOfferDirectly] = useState<boolean>(false);
@@ -69,6 +75,7 @@ export const App: React.FC = () => {
 
     // Reset initial game state from SCENARIO
     setCurrentSahneId(SCENARIO.baslangic.ilk_sahne || 'S1');
+    setZiyaret(0);
     setSureDk(SCENARIO.baslangic.sure_dk || 0);
     setEtki(SCENARIO.baslangic.etki || 180);
     setMaxEtki(SCENARIO.baslangic.etki || 180);
@@ -80,6 +87,7 @@ export const App: React.FC = () => {
     setEndGame(null);
     setEndReasons([]);
     setLastChosenEylem(null);
+    setLastEvaluatedActionInfo(null);
     setIsWhatHappenedOpen(false);
     setPendingStep(null);
     setOpenTutorOfferDirectly(false);
@@ -101,6 +109,14 @@ export const App: React.FC = () => {
       koordinasyon,
       bayraklar,
       decisionCount: kararlar.length,
+    });
+
+    const eylemMetni = rol === 'backend' ? eylem.metin_backend : eylem.metin_lider;
+    const nedenOlduMetni = (hedef === 'Öğrenmek' && eylem.neden_oldu_uzun) || eylem.neden_oldu;
+    setLastEvaluatedActionInfo({
+      secilen_eylem_metni: eylemMetni,
+      ne_oldu: eylem.ne_oldu,
+      neden_oldu: nedenOlduMetni,
     });
 
     setPendingStep(step);
@@ -134,6 +150,8 @@ export const App: React.FC = () => {
       setScreen('result');
     } else {
       setCurrentSahneId(pendingStep.nextSahneId);
+      // Karar sonrası sahneye geçiş: yeni ziyaret
+      setZiyaret((prev) => prev + 1);
     }
 
     setPendingStep(null);
@@ -166,6 +184,8 @@ export const App: React.FC = () => {
     } else {
       setCurrentSahneId(pendingStep.nextSahneId);
       setOpenTutorOfferDirectly(true);
+      // Karar sonrası sahneye geçiş: yeni ziyaret
+      setZiyaret((prev) => prev + 1);
     }
 
     setPendingStep(null);
@@ -201,6 +221,7 @@ export const App: React.FC = () => {
       setEndReasons(timeoutStep.endReasons);
       setScreen('result');
     }
+    // NOT: Zaman aşımı yeni ziyaret sayılmaz (spec 3.7) -> setZiyaret çağrılmaz
   };
 
   const handlePlayOtherRole = () => {
@@ -228,6 +249,7 @@ export const App: React.FC = () => {
 
       {screen === 'scene' && (
         <SceneScreen
+          key={`${currentSahneId}-${ziyaret}`}
           sahne={currentSahne}
           rol={rol}
           seviye={seviye}
@@ -240,6 +262,8 @@ export const App: React.FC = () => {
           oncekiKararlarMetinleri={oncekiKararlarMetinleri}
           ekstraMesajlar={ekstraMesajlar}
           isMock={isMock}
+          isWhatHappenedOpen={isWhatHappenedOpen}
+          lastEvaluatedActionInfo={lastEvaluatedActionInfo}
           onSelectEylem={handleSelectEylem}
           onTimeout={handleTimeout}
           onOpenTutorOfferDirectly={openTutorOfferDirectly}
@@ -275,6 +299,7 @@ export const App: React.FC = () => {
         eylem={lastChosenEylem}
         isOpen={isWhatHappenedOpen}
         hedef={hedef}
+        isEndGame={Boolean(pendingStep?.endGame)}
         onContinue={handleContinueAfterWhatHappened}
         onOpenTutorOffer={handleOpenTutorFromOffer}
       />

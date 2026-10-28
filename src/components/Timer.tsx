@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 
 interface Props {
   isActive: boolean;
@@ -9,24 +9,46 @@ interface Props {
 
 export const Timer: React.FC<Props> = ({ isActive, isPaused, onTimeout, resetKey }) => {
   const [secondsLeft, setSecondsLeft] = useState(60);
+  const [isTabHidden, setIsTabHidden] = useState(
+    typeof document !== 'undefined' ? document.hidden : false
+  );
+  const onTimeoutRef = useRef(onTimeout);
+  const hasTimedOutRef = useRef(false);
 
+  // Keep onTimeout in a ref so effect doesn't re-run on every render
+  useEffect(() => {
+    onTimeoutRef.current = onTimeout;
+  }, [onTimeout]);
+
+  // Tab visibility listener
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsTabHidden(document.hidden);
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
+  // Reset when resetKey changes (new scene visit)
   useEffect(() => {
     setSecondsLeft(60);
+    hasTimedOutRef.current = false;
   }, [resetKey]);
 
   useEffect(() => {
-    if (!isActive || isPaused) return;
-
-    if (secondsLeft <= 0) {
-      onTimeout();
-      return;
-    }
+    // If not active, paused, tab hidden, or already timed out in this visit, do nothing
+    if (!isActive || isPaused || isTabHidden || hasTimedOutRef.current) return;
 
     const timer = setInterval(() => {
       setSecondsLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          onTimeout();
+          if (!hasTimedOutRef.current) {
+            hasTimedOutRef.current = true;
+            onTimeoutRef.current();
+          }
           return 0;
         }
         return prev - 1;
@@ -34,7 +56,7 @@ export const Timer: React.FC<Props> = ({ isActive, isPaused, onTimeout, resetKey
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isActive, isPaused, secondsLeft, onTimeout]);
+  }, [isActive, isPaused, isTabHidden]);
 
   if (!isActive) return null;
 

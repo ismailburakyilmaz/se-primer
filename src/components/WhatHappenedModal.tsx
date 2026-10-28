@@ -5,6 +5,7 @@ interface Props {
   eylem: Eylem | null;
   isOpen: boolean;
   hedef: Hedef;
+  isEndGame?: boolean;
   onContinue: () => void;
   onOpenTutorOffer: () => void;
 }
@@ -13,6 +14,7 @@ export const WhatHappenedModal: React.FC<Props> = ({
   eylem,
   isOpen,
   hedef,
+  isEndGame = false,
   onContinue,
   onOpenTutorOffer,
 }) => {
@@ -20,7 +22,7 @@ export const WhatHappenedModal: React.FC<Props> = ({
 
   const showLongReason = hedef === 'Öğrenmek' && eylem.neden_oldu_uzun;
   const reasonText = showLongReason ? eylem.neden_oldu_uzun : eylem.neden_oldu;
-  const showTutorOffer = ['geciktiren', 'tehlikeli', 'kirmizi_cizgi'].includes(eylem.tur);
+  const showTutorOffer = !isEndGame && ['geciktiren', 'tehlikeli', 'kirmizi_cizgi'].includes(eylem.tur);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40">

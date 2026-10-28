@@ -1,21 +1,41 @@
 import express, { Request, Response } from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { GoogleGenAI } from '@google/genai';
-import { AI_MODELS } from './src/config/models.js';
+import { GoogleGenAI, ThinkingLevel } from '@google/genai';
+import { AI_MODELS } from './src/config/models';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+import fs from 'fs';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json());
 
-const apiKey = process.env.GEMINI_API_KEY;
+let apiKey = process.env.GEMINI_API_KEY;
+if (!apiKey || apiKey === 'MY_GEMINI_API_KEY') {
+  if (fs.existsSync('.env')) {
+    const envContent = fs.readFileSync('.env', 'utf-8');
+    const match = envContent.match(/GEMINI_API_KEY=(.*)/);
+    if (match && match[1]?.trim()) {
+      apiKey = match[1].trim();
+      process.env.GEMINI_API_KEY = apiKey;
+    }
+  }
+}
+
 let ai: GoogleGenAI | null = null;
 try {
-  ai = new GoogleGenAI(apiKey ? { apiKey } : {});
+  ai = new GoogleGenAI({
+    apiKey: apiKey || '',
+    httpOptions: {
+      headers: {
+        'User-Agent': 'aistudio-build',
+      },
+    },
+  });
 } catch (e) {
   console.warn('[Gemini] Initialized without credentials, will use fallback');
 }
@@ -79,7 +99,12 @@ function validateNarratorOutput(
   if (Array.isArray(parsed.mesajlar)) {
     if (parsed.mesajlar.length > 2) return false;
     for (const msg of parsed.mesajlar) {
-      if (!msg.kisi || !izinliKisiler[msg.kisi]) return false;
+      if (!msg.kisi) return false;
+      const matchingKey = Object.keys(izinliKisiler).find(
+        (k) => k.toLowerCase() === msg.kisi.toLowerCase() || izinliKisiler[k].toLowerCase() === msg.kisi.toLowerCase()
+      );
+      if (!matchingKey) return false;
+      msg.kisi = matchingKey;
     }
   }
 
@@ -231,7 +256,7 @@ app.post('/api/tutor', async (req: Request, res: Response) => {
       contents: JSON.stringify(promptContext),
       config: {
         systemInstruction: TUTOR_SYSTEM_PROMPT,
-        thinkingConfig: { thinkingBudget: 0 },
+        thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
       },
     });
     return response.text || '';

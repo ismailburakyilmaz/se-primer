@@ -22,6 +22,12 @@ interface Props {
   oncekiKararlarMetinleri: string[];
   ekstraMesajlar?: Mesaj[];
   isMock: boolean;
+  isWhatHappenedOpen?: boolean;
+  lastEvaluatedActionInfo?: {
+    secilen_eylem_metni: string;
+    ne_oldu: string;
+    neden_oldu: string;
+  } | null;
   onSelectEylem: (eylem: Eylem) => void;
   onTimeout: () => void;
   onOpenTutorOfferDirectly?: boolean;
@@ -41,6 +47,8 @@ export const SceneScreen: React.FC<Props> = ({
   oncekiKararlarMetinleri,
   ekstraMesajlar = [],
   isMock,
+  isWhatHappenedOpen = false,
+  lastEvaluatedActionInfo = null,
   onSelectEylem,
   onTimeout,
   onOpenTutorOfferDirectly = false,
@@ -131,7 +139,7 @@ export const SceneScreen: React.FC<Props> = ({
   // Check if timer should be paused:
   // "Sayaç şu durumlarda durur: yapay zekâ anlatımı beklenirken, Ne oldu, tutor, terim veya ipucu paneli açıkken, sekme arka plandayken."
   const isTimerPaused =
-    isLoadingNarrator || isClueOpen || isTutorOpen || Boolean(selectedTerm);
+    isLoadingNarrator || isClueOpen || isTutorOpen || Boolean(selectedTerm) || isWhatHappenedOpen;
 
   const handleActionClick = (eylem: Eylem) => {
     if (isActionProcessing) return; // Prevent double click
@@ -148,24 +156,32 @@ export const SceneScreen: React.FC<Props> = ({
       rol === 'backend' ? e.metin_backend : e.metin_lider
     );
 
+    const bodyPayload: any = {
+      olay_ozeti: SCENARIO.ozet,
+      rol: rol === 'backend' ? 'Backend geliştirici' : 'Takım lideri',
+      seviye,
+      hedef,
+      gorunen_kanitlar: kanitlarForRole,
+      secenek_metinleri: secenekMetinleri,
+      ogrenme_odagi: sahne.ogrenme_odagi,
+      onceki_kararlar: oncekiKararlarMetinleri,
+      mod: tutorOfferMode,
+      son_mesajlar: combinedMessages,
+      ogrenci_girdisi: msg,
+      hazir_ipucu: sahne.hazir_ipucu,
+      mock: isMock,
+    };
+
+    if (tutorOfferMode === 'karar_sonrasi' && lastEvaluatedActionInfo) {
+      bodyPayload.secilen_eylem_metni = lastEvaluatedActionInfo.secilen_eylem_metni;
+      bodyPayload.ne_oldu = lastEvaluatedActionInfo.ne_oldu;
+      bodyPayload.neden_oldu = lastEvaluatedActionInfo.neden_oldu;
+    }
+
     const res = await fetch('/api/tutor', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        olay_ozeti: SCENARIO.ozet,
-        rol: rol === 'backend' ? 'Backend geliştirici' : 'Takım lideri',
-        seviye,
-        hedef,
-        gorunen_kanitlar: kanitlarForRole,
-        secenek_metinleri: secenekMetinleri,
-        ogrenme_odagi: sahne.ogrenme_odagi,
-        onceki_kararlar: oncekiKararlarMetinleri,
-        mod: tutorOfferMode,
-        son_mesajlar: combinedMessages,
-        ogrenci_girdisi: msg,
-        hazir_ipucu: sahne.hazir_ipucu,
-        mock: isMock,
-      }),
+      body: JSON.stringify(bodyPayload),
     });
 
     if (!res.ok) {
@@ -369,7 +385,7 @@ export const SceneScreen: React.FC<Props> = ({
           }}
           className="h-10 px-3 bg-[var(--fis)] border border-[var(--tukenmez)] text-[var(--tukenmez)] font-mono-code text-[12px] font-medium rounded-[4px] flex items-center gap-1.5 cursor-pointer hover:bg-[var(--kagit)]"
         >
-          <span>💬</span> Tutora Sor
+          <span>[?]</span> Tutora Sor
         </button>
       </div>
 
