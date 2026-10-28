@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { EVAL_INPUTS, SCENARIO, getSahne } from '../utils/engine.js';
-import { RubberStamp } from '../components/RubberStamp.js';
 
 interface EvalRowResult {
   id: string;
   sahne: string;
   rol: string;
+  tur: string;
   seviye: string;
   hedef: string;
   ogrenci_girdisi: string;
@@ -13,6 +13,7 @@ interface EvalRowResult {
   cevap: string;
   model: string;
   durationMs: number;
+  tarihSaat: string;
   status: 'idle' | 'running' | 'success' | 'error';
 }
 
@@ -27,6 +28,7 @@ export const EvalScreen: React.FC<Props> = ({ onBack, isMock }) => {
       id: inp.id,
       sahne: inp.sahne,
       rol: inp.rol,
+      tur: inp.tur || '',
       seviye: inp.seviye,
       hedef: inp.hedef,
       ogrenci_girdisi: inp.ogrenci_girdisi,
@@ -34,6 +36,7 @@ export const EvalScreen: React.FC<Props> = ({ onBack, isMock }) => {
       cevap: '',
       model: '',
       durationMs: 0,
+      tarihSaat: '',
       status: 'idle',
     }))
   );
@@ -72,6 +75,8 @@ export const EvalScreen: React.FC<Props> = ({ onBack, isMock }) => {
     });
 
     const startTime = performance.now();
+    const timestamp = new Date().toLocaleString('tr-TR');
+
     try {
       const res = await fetch('/api/tutor', {
         method: 'POST',
@@ -94,29 +99,63 @@ export const EvalScreen: React.FC<Props> = ({ onBack, isMock }) => {
       });
 
       const elapsed = Math.round(performance.now() - startTime);
-      if (!res.ok) throw new Error('Eval request failed');
+
+      if (!res.ok) {
+        setResults((prev) => {
+          const next = [...prev];
+          next[index] = {
+            ...next[index],
+            cevap: 'HATA',
+            model: 'error',
+            durationMs: elapsed,
+            tarihSaat: timestamp,
+            status: 'error',
+          };
+          return next;
+        });
+        return;
+      }
 
       const data = await res.json();
-      setResults((prev) => {
-        const next = [...prev];
-        next[index] = {
-          ...next[index],
-          cevap: data.cevap,
-          model: data.model || 'unknown',
-          durationMs: elapsed,
-          status: 'success',
-        };
-        return next;
-      });
+
+      // Bir satırda hata olursa veya cevap model 'hazir_ipucu' ile dönerse (fallback: true) tutor_yaniti yerine "HATA" yaz
+      if (data.fallback || data.model === 'hazir_ipucu') {
+        setResults((prev) => {
+          const next = [...prev];
+          next[index] = {
+            ...next[index],
+            cevap: 'HATA',
+            model: data.model || 'hazir_ipucu',
+            durationMs: elapsed,
+            tarihSaat: timestamp,
+            status: 'error',
+          };
+          return next;
+        });
+      } else {
+        setResults((prev) => {
+          const next = [...prev];
+          next[index] = {
+            ...next[index],
+            cevap: data.cevap,
+            model: data.model || 'unknown',
+            durationMs: elapsed,
+            tarihSaat: timestamp,
+            status: 'success',
+          };
+          return next;
+        });
+      }
     } catch (err: any) {
       const elapsed = Math.round(performance.now() - startTime);
       setResults((prev) => {
         const next = [...prev];
         next[index] = {
           ...next[index],
-          cevap: `HATA: ${err.message}`,
+          cevap: 'HATA',
           model: 'error',
           durationMs: elapsed,
+          tarihSaat: timestamp,
           status: 'error',
         };
         return next;
@@ -129,6 +168,10 @@ export const EvalScreen: React.FC<Props> = ({ onBack, isMock }) => {
     setProgress(0);
 
     for (let i = 0; i < EVAL_INPUTS.length; i++) {
+      if (i > 0) {
+        // İstekler arasında 5 saniye bekle
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+      }
       await runSingleEval(i);
       setProgress(i + 1);
     }
@@ -140,6 +183,7 @@ export const EvalScreen: React.FC<Props> = ({ onBack, isMock }) => {
       'ID',
       'Sahne',
       'Rol',
+      'Tür',
       'Seviye',
       'Hedef',
       'Öğrenci Girdisi',
@@ -147,6 +191,7 @@ export const EvalScreen: React.FC<Props> = ({ onBack, isMock }) => {
       'Tutor Cevabı',
       'Kullanılan Model',
       'Süre (ms)',
+      'Tarih-Saat',
       'Durum',
     ];
 
@@ -156,6 +201,7 @@ export const EvalScreen: React.FC<Props> = ({ onBack, isMock }) => {
       escapeCsv(r.id),
       escapeCsv(r.sahne),
       escapeCsv(r.rol),
+      escapeCsv(r.tur),
       escapeCsv(r.seviye),
       escapeCsv(r.hedef),
       escapeCsv(r.ogrenci_girdisi),
@@ -163,6 +209,7 @@ export const EvalScreen: React.FC<Props> = ({ onBack, isMock }) => {
       escapeCsv(r.cevap),
       escapeCsv(r.model),
       r.durationMs.toString(),
+      escapeCsv(r.tarihSaat),
       escapeCsv(r.status),
     ]);
 
@@ -182,7 +229,7 @@ export const EvalScreen: React.FC<Props> = ({ onBack, isMock }) => {
   };
 
   return (
-    <div className="w-full max-w-5xl mx-auto p-4 sm:p-6 bg-[var(--kagit)] min-h-screen">
+    <div className="w-full max-w-6xl mx-auto p-4 sm:p-6 bg-[var(--kagit)] min-h-screen">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-[var(--cizgi)] pb-3 mb-4">
         <div>
@@ -205,7 +252,7 @@ export const EvalScreen: React.FC<Props> = ({ onBack, isMock }) => {
       {/* Description & Action buttons */}
       <div className="bg-[var(--fis)] border border-[var(--cizgi)] rounded-[4px] p-4 mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="text-[13px] text-[var(--soluk)] max-w-xl">
-          Tutor modelinin kurallara uyumunu (doğru seçeneği söylememe, kanıtlara dayalı tek soru sorma, terim tanımı vb.) test eder. Test girdileri <code className="font-mono-code">eval_inputs.json</code> dosyasından alınır.
+          Tutor modelinin kurallara uyumunu (doğru seçeneği söylememe, kanıtlara dayalı tek soru sorma, terim tanımı vb.) test eder. Test girdileri <code className="font-mono-code">eval_inputs.json</code> dosyasından alınır. İstekler arasında 5 saniye beklenir.
           {isMock && (
             <span className="block mt-1 text-[var(--pas)] font-mono-code font-bold">
               [Mock Modu Aktif: Yapay zekâ çağrılmaz, test yanıtları döner]
@@ -242,11 +289,13 @@ export const EvalScreen: React.FC<Props> = ({ onBack, isMock }) => {
             <tr className="border-b border-[var(--cizgi)] bg-[var(--kagit)] font-mono-code text-[11px] text-[var(--soluk)]">
               <th className="p-2 border-r border-[var(--cizgi)]">ID</th>
               <th className="p-2 border-r border-[var(--cizgi)]">Sahne / Rol</th>
+              <th className="p-2 border-r border-[var(--cizgi)]">Tür</th>
               <th className="p-2 border-r border-[var(--cizgi)]">Öğrenci Girdisi</th>
               <th className="p-2 border-r border-[var(--cizgi)]">Beklenen Davranış</th>
               <th className="p-2 border-r border-[var(--cizgi)]">Tutor Cevabı</th>
               <th className="p-2 border-r border-[var(--cizgi)]">Model</th>
-              <th className="p-2">Süre</th>
+              <th className="p-2 border-r border-[var(--cizgi)]">Süre</th>
+              <th className="p-2">Tarih-Saat</th>
             </tr>
           </thead>
           <tbody>
@@ -260,6 +309,9 @@ export const EvalScreen: React.FC<Props> = ({ onBack, isMock }) => {
                 </td>
                 <td className="p-2 border-r border-[var(--cizgi)] font-mono-code text-[11px]">
                   {row.sahne} · {row.rol}
+                </td>
+                <td className="p-2 border-r border-[var(--cizgi)] font-mono-code text-[11px] text-[var(--soluk)]">
+                  {row.tur}
                 </td>
                 <td className="p-2 border-r border-[var(--cizgi)] font-medium text-[var(--murekkep)] max-w-xs">
                   "{row.ogrenci_girdisi}"
@@ -279,7 +331,7 @@ export const EvalScreen: React.FC<Props> = ({ onBack, isMock }) => {
                     </span>
                   )}
                   {row.status === 'error' && (
-                    <span className="text-[var(--damga)] font-mono-code text-[11px]">
+                    <span className="text-[var(--damga)] font-mono-code text-[12px] font-bold">
                       {row.cevap}
                     </span>
                   )}
@@ -292,8 +344,11 @@ export const EvalScreen: React.FC<Props> = ({ onBack, isMock }) => {
                 <td className="p-2 border-r border-[var(--cizgi)] font-mono-code text-[11px] whitespace-nowrap">
                   {row.model}
                 </td>
-                <td className="p-2 font-mono-code text-[11px] whitespace-nowrap">
+                <td className="p-2 border-r border-[var(--cizgi)] font-mono-code text-[11px] whitespace-nowrap">
                   {row.durationMs ? `${row.durationMs} ms` : '-'}
+                </td>
+                <td className="p-2 font-mono-code text-[11px] text-[var(--soluk)] whitespace-nowrap">
+                  {row.tarihSaat || '-'}
                 </td>
               </tr>
             ))}

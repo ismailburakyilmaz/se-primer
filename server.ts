@@ -57,7 +57,8 @@ Kurallar:
 4. Anlatım en fazla 90 kelime olsun ve ikinci tekil şahısla ("sen") yazılsın.
 5. Seviye "Yeni başladım" ise sade, "Deneyimliyim" ise teknik ve kısa yaz. Hedef "Baskı altında karar" ise en fazla 50 kelime yaz. Rolün bakış açısını koru: takım lideri ekibi yönetir, backend geliştirici kodu ve veritabanını inceler.
 6. Karakter mesajı yalnızca verilen kişilerden ve verilen içerikle olabilir; en fazla iki tane.
-7. Yalnızca istenen JSON biçiminde, Türkçe cevap ver.`;
+7. Yalnızca istenen JSON biçiminde, Türkçe cevap ver.
+8. Oyuncuya ne yapması, neyi incelemesi veya neyi seçmesi gerektiğini söyleme ya da ima etme; durumu anlat, kararı oyuncuya bırak.`;
 
 // 6.2 Tutor Talimatı
 const TUTOR_SYSTEM_PROMPT = `Sen SE Primer oyununda bir yazılım mühendisliği tutorusun. Oyuncu bir kriz olayında karar veriyor.

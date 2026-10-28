@@ -343,11 +343,7 @@ export const SceneScreen: React.FC<Props> = ({
                   disabled={isActionProcessing}
                   className="w-full text-left p-3.5 bg-[var(--fis)] border border-[var(--cizgi)] hover:border-[var(--tukenmez)] rounded-[4px] min-h-[48px] flex items-start gap-3 cursor-pointer transition-colors focus:outline-none focus:ring-1 focus:ring-[var(--tukenmez)] disabled:opacity-50"
                 >
-                  <div className="w-5 h-5 rounded-[2px] border border-[var(--cizgi)] bg-white flex items-center justify-center shrink-0 mt-0.5">
-                    <span className="text-[11px] text-[var(--tukenmez)] font-mono-code font-bold">
-                      →
-                    </span>
-                  </div>
+                  <div className="w-5 h-5 rounded-[2px] border border-[var(--cizgi)] bg-white shrink-0 mt-0.5" />
                   <div className="text-[15px] font-medium text-[var(--murekkep)] leading-snug flex-1">
                     <HighlightedText
                       text={eylemMetni}

@@ -19,7 +19,7 @@ interface Props {
 }
 
 export const RubberStamp: React.FC<Props> = ({ text, type, large = false, className = '', testId }) => {
-  const normalized = (type || text).trim().toUpperCase();
+  const normalized = (type || text).trim().toLocaleUpperCase('tr-TR');
 
   let colorClass = 'text-[var(--soluk)] border-[var(--soluk)]';
   let isDashed = false;
@@ -45,7 +45,7 @@ export const RubberStamp: React.FC<Props> = ({ text, type, large = false, classN
         boxShadow: isDashed ? 'none' : undefined,
       }}
     >
-      {text}
+      {text.toLocaleUpperCase('tr-TR')}
     </span>
   );
 };

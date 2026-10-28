@@ -200,7 +200,7 @@ export const ResultScreen: React.FC<Props> = ({
           onClick={onPlayOtherRole}
           className="w-full h-12 bg-[var(--tukenmez)] hover:opacity-95 text-white font-medium rounded-[4px] cursor-pointer text-[15px]"
         >
-          {currentRol === 'backend' ? 'Takım Lideri Rolüyle Oyna' : 'Backend Geliştirici Rolüyle Oyna'}
+          Başka rolle oyna
         </button>
 
         <button
@@ -209,7 +209,7 @@ export const ResultScreen: React.FC<Props> = ({
           onClick={onRestart}
           className="w-full h-11 bg-[var(--fis)] hover:bg-[var(--kagit)] border border-[var(--murekkep)] text-[var(--murekkep)] font-medium rounded-[4px] cursor-pointer text-[14px]"
         >
-          Giriş Ekranına Dön
+          Tekrar oyna
         </button>
       </div>
     </div>
