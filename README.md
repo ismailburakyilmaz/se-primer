@@ -6,8 +6,8 @@ Yazılım mühendisleri için telefonda oynanan bir kriz ve karar oyunu. Oyuncu,
 
 | | |
 | --- | --- |
-| Oyna (AI Studio) | [PAYLAŞIM LİNKİ] |
-| Stitch tasarımı | [STITCH PROJE LİNKİ] |
+| Oyna (AI Studio) | https://ai.studio/apps/20efef14-f93d-4c63-a045-860f81f32461 |
+| Stitch tasarımı | https://stitch.withgoogle.com/projects/18163795360167618805 |
 | Kaynak kod | https://github.com/ismailburakyilmaz/se-primer |
 | Tanıtım videosu (60 sn) | `cypress/videos/tanitim.cy.js.mp4`: Cypress ile kaydedilmiş tam bir oyun; alt yazılar ve tıklama halkası yalnızca videoya eklenmiştir. Anlatım kayıtlı metinden gelir; tutor cevabı, oyunda v2 talimatıyla alınmış gerçek bir cevabın kaydıdır (`eval/eval.md`, Z2). |
 
