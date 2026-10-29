@@ -12,7 +12,7 @@ const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json());
 
-const apiKey = process.env.GEMINI_API_KEY;
+const apiKey = process.env.SE_PRIMER_GEMINI_KEY || process.env.GEMINI_API_KEY;
 console.log(`[Gemini] API key configured: ${Boolean(apiKey && apiKey.trim())}`);
 
 let ai: GoogleGenAI | null = null;
