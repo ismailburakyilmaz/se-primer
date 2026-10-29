@@ -6,8 +6,8 @@ Yazılım mühendisleri için telefonda oynanan bir kriz ve karar oyunu. Oyuncu,
 
 | | |
 | --- | --- |
-| Oyna (AI Studio) | [PAYLAŞIM LİNKİ] |
-| Stitch tasarımı | [STITCH PROJE LİNKİ] |
+| Oyna (AI Studio) | https://ai.studio/apps/20efef14-f93d-4c63-a045-860f81f32461 |
+| Stitch tasarımı | https://stitch.withgoogle.com/projects/18163795360167618805 |
 | Kaynak kod | https://github.com/ismailburakyilmaz/se-primer |
 | Tanıtım videosu (60 sn) | `cypress/videos/tanitim.cy.js.mp4`: Cypress ile kaydedilmiş tam bir oyun; alt yazılar ve tıklama halkası yalnızca videoya eklenmiştir. Anlatım kayıtlı metinden gelir; tutor cevabı, oyunda v2 talimatıyla alınmış gerçek bir cevabın kaydıdır (`eval/eval.md`, Z2). |
 
@@ -57,7 +57,8 @@ Yazılım mühendisleri için telefonda oynanan bir kriz ve karar oyunu. Oyuncu,
 
 ```bash
 npm install
-# .env dosyası: GEMINI_API_KEY=<ücretsiz anahtar>   (repoya gönderilmez)
+# .env dosyası ya da ortam değişkeni: GEMINI_API_KEY=<ücretsiz anahtar>   (repoya gönderilmez)
+# AI Studio'da: Secrets'a SE_PRIMER_GEMINI_KEY adıyla ekleyin (bkz. Sınırlar)
 npm run dev          # http://localhost:3000
 ```
 
@@ -107,6 +108,6 @@ Talimatın etkisi aynı modelle yapılan B → C karşılaştırmasından okunur
 
 ## Sınırlar
 
-- **AI Studio paylaşım linkinde canlı AI:** AI Studio'nun sunucuya verdiği `GEMINI_API_KEY` bu projede geçersiz ("API_KEY_INVALID") geldi. Bu yüzden linkte anlatıcı kayıtlı metni, tutor da "Hazır ipucu"nu gösterebilir. Oyunun tamamı oynanır; yedek davranış spec §6'da tanımlandığı gibi çalışır. Canlı tutor yerelde kendi ücretsiz anahtarla çalışır (yukarıdaki "Yerelde çalıştırma"); eval de böyle yapıldı.
+- **AI Studio'da anahtar:** AI Studio, `GEMINI_API_KEY` adlı secret'ı sunucuya gerçek değer yerine `MY_GEMINI_API_KEY` yer tutucusuyla veriyordu ("API_KEY_INVALID"). Teşhis sırasında anahtarın değeri hiç yazdırılmadı; yalnızca uzunluğu ve biçimi loglandı. Çözüm olarak anahtar `SE_PRIMER_GEMINI_KEY` adlı ayrı bir secret olarak eklendi; sunucu önce onu, yoksa `GEMINI_API_KEY`'i okur (`server.ts`). Anahtar yine yalnızca sunucuda durur, koda ve repoya girmez.
 - Ücretsiz Gemini katmanının günlük ve dakikalık sınırları var. Sınır dolunca anlatıcı kayıtlı metne, tutor "Hazır ipucu"na döner; oyun çalışmaya devam eder.
 - Bütün kişi, kurum ve hasta bilgileri kurgudur.
