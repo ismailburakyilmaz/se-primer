@@ -6,9 +6,21 @@ interface Props {
   etki: number;
   risk: number;
   koordinasyon: number;
+  highlights?: {
+    sure?: boolean;
+    etki?: boolean;
+    risk?: boolean;
+    koordinasyon?: boolean;
+  };
 }
 
-export const Gauges: React.FC<Props> = ({ sureDk, etki, risk, koordinasyon }) => {
+export const Gauges: React.FC<Props> = ({
+  sureDk,
+  etki,
+  risk,
+  koordinasyon,
+  highlights = {},
+}) => {
   const clock = formatClock(sureDk);
   const isHighRisk = risk >= 70;
 
@@ -17,9 +29,11 @@ export const Gauges: React.FC<Props> = ({ sureDk, etki, risk, koordinasyon }) =>
       {/* Olay Süresi */}
       <div
         data-testid="gosterge-sure"
-        className="bg-[var(--fis)] border border-[var(--cizgi)] rounded-[4px] p-2 flex flex-col justify-between"
+        className={`border border-[var(--cizgi)] rounded-[4px] p-2 flex flex-col justify-between highlight-transition ${
+          highlights.sure ? 'bg-[var(--fosfor)]' : 'bg-[var(--fis)]'
+        }`}
       >
-        <span className="font-mono-code text-[11px] font-semibold text-[var(--soluk)] uppercase tracking-wider">
+        <span className="font-mono-code text-[12px] font-semibold text-[var(--soluk)] uppercase tracking-wider">
           OLAY SÜRESİ
         </span>
         <div className="flex items-baseline justify-between mt-1">
@@ -35,16 +49,18 @@ export const Gauges: React.FC<Props> = ({ sureDk, etki, risk, koordinasyon }) =>
       {/* Etki */}
       <div
         data-testid="gosterge-etki"
-        className="bg-[var(--fis)] border border-[var(--cizgi)] rounded-[4px] p-2 flex flex-col justify-between"
+        className={`border border-[var(--cizgi)] rounded-[4px] p-2 flex flex-col justify-between highlight-transition ${
+          highlights.etki ? 'bg-[var(--fosfor)]' : 'bg-[var(--fis)]'
+        }`}
       >
-        <span className="font-mono-code text-[11px] font-semibold text-[var(--soluk)] uppercase tracking-wider">
+        <span className="font-mono-code text-[12px] font-semibold text-[var(--soluk)] uppercase tracking-wider">
           ETKİ
         </span>
         <div className="flex items-baseline justify-between mt-1">
           <span className="font-mono-code text-[17px] font-semibold text-[var(--murekkep)]">
             {etki}
           </span>
-          <span className="text-[11px] text-[var(--soluk)] font-normal truncate max-w-[90px]">
+          <span className="text-[12px] text-[var(--soluk)] font-normal truncate max-w-[90px]">
             bekleyen talep
           </span>
         </div>
@@ -53,9 +69,11 @@ export const Gauges: React.FC<Props> = ({ sureDk, etki, risk, koordinasyon }) =>
       {/* Veri Riski */}
       <div
         data-testid="gosterge-risk"
-        className="bg-[var(--fis)] border border-[var(--cizgi)] rounded-[4px] p-2 flex flex-col justify-between"
+        className={`border border-[var(--cizgi)] rounded-[4px] p-2 flex flex-col justify-between highlight-transition ${
+          highlights.risk ? 'bg-[var(--fosfor)]' : 'bg-[var(--fis)]'
+        }`}
       >
-        <span className="font-mono-code text-[11px] font-semibold text-[var(--soluk)] uppercase tracking-wider">
+        <span className="font-mono-code text-[12px] font-semibold text-[var(--soluk)] uppercase tracking-wider">
           VERİ RİSKİ
         </span>
         <div className="flex items-baseline justify-between mt-1">
@@ -67,7 +85,7 @@ export const Gauges: React.FC<Props> = ({ sureDk, etki, risk, koordinasyon }) =>
             {risk} <span className="text-[12px] font-normal text-[var(--soluk)]">/ 100</span>
           </span>
           {isHighRisk && (
-            <span className="font-mono-code text-[10px] text-[var(--damga)] font-bold">
+            <span className="font-mono-code text-[12px] text-[var(--damga)] font-bold">
               KRİTİK
             </span>
           )}
@@ -77,9 +95,11 @@ export const Gauges: React.FC<Props> = ({ sureDk, etki, risk, koordinasyon }) =>
       {/* Ekip Koordinasyonu */}
       <div
         data-testid="gosterge-ekip"
-        className="bg-[var(--fis)] border border-[var(--cizgi)] rounded-[4px] p-2 flex flex-col justify-between"
+        className={`border border-[var(--cizgi)] rounded-[4px] p-2 flex flex-col justify-between highlight-transition ${
+          highlights.koordinasyon ? 'bg-[var(--fosfor)]' : 'bg-[var(--fis)]'
+        }`}
       >
-        <span className="font-mono-code text-[11px] font-semibold text-[var(--soluk)] uppercase tracking-wider">
+        <span className="font-mono-code text-[12px] font-semibold text-[var(--soluk)] uppercase tracking-wider">
           EKİP KOORDİNASYONU
         </span>
         <div className="flex items-baseline justify-between mt-1">
@@ -87,7 +107,7 @@ export const Gauges: React.FC<Props> = ({ sureDk, etki, risk, koordinasyon }) =>
             {getCoordLabel(koordinasyon)}
           </span>
           {koordinasyon === 0 && (
-            <span className="font-mono-code text-[10px] text-[var(--pas)] font-semibold">
+            <span className="font-mono-code text-[12px] text-[var(--pas)] font-semibold">
               +5 dk/eylem
             </span>
           )}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RubberStamp } from './RubberStamp.js';
 
 interface Message {
@@ -23,6 +23,17 @@ export const TutorModal: React.FC<Props> = ({
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -60,10 +71,14 @@ export const TutorModal: React.FC<Props> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40">
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40"
+      onClick={onClose}
+    >
       <div
         data-testid="panel-tutor"
         className="w-full sm:max-w-lg bg-[var(--fis)] border border-[var(--cizgi)] rounded-t-[4px] sm:rounded-[4px] p-4 text-[var(--murekkep)] flex flex-col max-h-[85vh] h-[550px]"
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[var(--cizgi)] pb-2 mb-3">
@@ -73,8 +88,10 @@ export const TutorModal: React.FC<Props> = ({
             </span>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="text-[var(--soluk)] hover:text-[var(--murekkep)] text-[16px] px-1 font-mono-code cursor-pointer"
+            className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center text-[var(--soluk)] hover:text-[var(--murekkep)] text-[16px] font-mono-code cursor-pointer -mr-2 -my-2"
+            aria-label="Kapat"
           >
             ✕
           </button>
@@ -101,7 +118,7 @@ export const TutorModal: React.FC<Props> = ({
                 <div className="max-w-[90%] bg-[var(--kagit)] border border-[var(--cizgi)] text-[14px] px-3 py-2.5 rounded-[4px] leading-relaxed text-[var(--murekkep)]">
                   {m.isFallback && (
                     <div className="mb-2 pb-1 border-b border-[var(--cizgi)] flex items-center justify-between gap-2">
-                      <span className="text-[11px] text-[var(--pas)] font-mono-code">
+                      <span className="text-[12px] text-[var(--pas)] font-mono-code">
                         Tutor şu an kullanılamıyor
                       </span>
                       <RubberStamp
@@ -127,7 +144,7 @@ export const TutorModal: React.FC<Props> = ({
 
         <div className="tear-line my-2" />
 
-        {/* Input bar */}
+        {/* Input bar - at least 44px height */}
         <div className="flex gap-2 pt-1">
           <input
             data-testid="tutor-girdi"
@@ -136,14 +153,15 @@ export const TutorModal: React.FC<Props> = ({
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
             placeholder="Sorunu veya düşünceni yaz..."
-            className="flex-1 bg-[var(--kagit)] border border-[var(--cizgi)] rounded-[4px] px-3 py-2 text-[14px] text-[var(--murekkep)] focus:outline-none focus:border-[var(--tukenmez)]"
+            className="flex-1 min-h-[44px] h-[44px] bg-[var(--kagit)] border border-[var(--cizgi)] rounded-[4px] px-3 py-2 text-[14px] text-[var(--murekkep)] focus:outline-none focus:border-[var(--tukenmez)]"
             disabled={isLoading}
           />
           <button
+            type="button"
             data-testid="tutor-gonder"
             onClick={handleSend}
             disabled={isLoading || !inputText.trim()}
-            className="h-10 px-4 bg-[var(--tukenmez)] text-white font-medium rounded-[4px] text-[13px] disabled:opacity-50 cursor-pointer"
+            className="min-h-[44px] h-[44px] px-4 bg-[var(--tukenmez)] text-white font-medium rounded-[4px] text-[13px] disabled:opacity-50 cursor-pointer"
           >
             Gönder
           </button>

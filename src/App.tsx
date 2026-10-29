@@ -1,11 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { Seviye, Rol, Hedef, Eylem, Sahne, KararKaydi, Mesaj } from './types/game.js';
-import { SCENARIO, getSahne, processDecision, processTimeout, StepResult } from './utils/engine.js';
+import { SCENARIO, getSahne, processDecision, processTimeout, StepResult, getCoordLabel } from './utils/engine.js';
 import { IntroScreen } from './screens/IntroScreen.js';
 import { SceneScreen } from './screens/SceneScreen.js';
 import { ResultScreen } from './screens/ResultScreen.js';
 import { EvalScreen } from './screens/EvalScreen.js';
 import { WhatHappenedModal } from './components/WhatHappenedModal.js';
+
+const STORAGE_KEY = 'se_primer_session_v1';
+
+function saveSessionState(state: any) {
+  try {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (e) {
+    // ignore quota or disabled storage
+  }
+}
+
+function clearSessionState() {
+  try {
+    sessionStorage.removeItem(STORAGE_KEY);
+  } catch (e) {
+    // ignore
+  }
+}
 
 export const App: React.FC = () => {
   const [screen, setScreen] = useState<'intro' | 'scene' | 'result' | 'eval'>('intro');
@@ -47,7 +65,22 @@ export const App: React.FC = () => {
   const [pendingStep, setPendingStep] = useState<StepResult | null>(null);
   const [openTutorOfferDirectly, setOpenTutorOfferDirectly] = useState<boolean>(false);
 
-  // Read URL query parameters on load
+  // Gösterge değişim metni ve vurgusu
+  const [gaugeChangesText, setGaugeChangesText] = useState<string>('');
+  const [pendingChangedGauges, setPendingChangedGauges] = useState<{
+    sure?: boolean;
+    etki?: boolean;
+    risk?: boolean;
+    koordinasyon?: boolean;
+  }>({});
+  const [gaugeHighlights, setGaugeHighlights] = useState<{
+    sure?: boolean;
+    etki?: boolean;
+    risk?: boolean;
+    koordinasyon?: boolean;
+  }>({});
+
+  // Read URL query parameters and sessionStorage on load
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('mock') === '1') {
@@ -59,6 +92,35 @@ export const App: React.FC = () => {
     }
     if (params.get('eval') === '1') {
       setScreen('eval');
+      return;
+    }
+
+    try {
+      const saved = sessionStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.currentSahneId) {
+          setScreen(parsed.screen || 'scene');
+          setSeviye(parsed.seviye || 'Yeni başladım');
+          setRol(parsed.rol || 'backend');
+          setHedef(parsed.hedef || 'Öğrenmek');
+          setSayacAcik(Boolean(parsed.sayacAcik));
+          setCurrentSahneId(parsed.currentSahneId || 'S1');
+          setZiyaret(parsed.ziyaret || 0);
+          setSureDk(parsed.sureDk || 0);
+          setEtki(parsed.etki ?? 180);
+          setMaxEtki(parsed.maxEtki ?? 180);
+          setRisk(parsed.risk ?? 10);
+          setKoordinasyon(parsed.koordinasyon ?? 1);
+          setBayraklar(parsed.bayraklar || {});
+          setKararlar(parsed.kararlar || []);
+          setEkstraMesajlar(parsed.ekstraMesajlar || []);
+          setEndGame(parsed.endGame || null);
+          setEndReasons(parsed.endReasons || []);
+        }
+      }
+    } catch (e) {
+      // ignore
     }
   }, []);
 
@@ -74,13 +136,19 @@ export const App: React.FC = () => {
     setSayacAcik(params.sayacAcik);
 
     // Reset initial game state from SCENARIO
-    setCurrentSahneId(SCENARIO.baslangic.ilk_sahne || 'S1');
+    const initialSahne = SCENARIO.baslangic.ilk_sahne || 'S1';
+    const initialSure = SCENARIO.baslangic.sure_dk || 0;
+    const initialEtki = SCENARIO.baslangic.etki || 180;
+    const initialRisk = SCENARIO.baslangic.risk || 10;
+    const initialCoord = SCENARIO.baslangic.koordinasyon || 1;
+
+    setCurrentSahneId(initialSahne);
     setZiyaret(0);
-    setSureDk(SCENARIO.baslangic.sure_dk || 0);
-    setEtki(SCENARIO.baslangic.etki || 180);
-    setMaxEtki(SCENARIO.baslangic.etki || 180);
-    setRisk(SCENARIO.baslangic.risk || 10);
-    setKoordinasyon(SCENARIO.baslangic.koordinasyon || 1);
+    setSureDk(initialSure);
+    setEtki(initialEtki);
+    setMaxEtki(initialEtki);
+    setRisk(initialRisk);
+    setKoordinasyon(initialCoord);
     setBayraklar({});
     setKararlar([]);
     setEkstraMesajlar([]);
@@ -91,7 +159,11 @@ export const App: React.FC = () => {
     setIsWhatHappenedOpen(false);
     setPendingStep(null);
     setOpenTutorOfferDirectly(false);
+    setGaugeChangesText('');
+    setPendingChangedGauges({});
+    setGaugeHighlights({});
 
+    clearSessionState();
     setScreen('scene');
   };
 
@@ -119,6 +191,40 @@ export const App: React.FC = () => {
       neden_oldu: nedenOlduMetni,
     });
 
+    // Göstergelerdeki değişimi hesapla (Requirement 6)
+    const diffParts: string[] = [];
+    const changed = {
+      sure: false,
+      etki: false,
+      risk: false,
+      koordinasyon: false,
+    };
+
+    const diffSure = step.sureDk - sureDk;
+    if (diffSure !== 0) {
+      diffParts.push(`Süre ${diffSure > 0 ? '+' : ''}${diffSure} dk`);
+      changed.sure = true;
+    }
+
+    const diffEtki = step.etki - etki;
+    if (diffEtki !== 0) {
+      diffParts.push(`Etki ${diffEtki > 0 ? '+' : ''}${diffEtki}`);
+      changed.etki = true;
+    }
+
+    const diffRisk = step.risk - risk;
+    if (diffRisk !== 0) {
+      diffParts.push(`Veri riski ${diffRisk > 0 ? '+' : ''}${diffRisk}`);
+      changed.risk = true;
+    }
+
+    if (step.koordinasyon !== koordinasyon) {
+      diffParts.push(`Ekip: ${getCoordLabel(koordinasyon)} → ${getCoordLabel(step.koordinasyon)}`);
+      changed.koordinasyon = true;
+    }
+
+    setGaugeChangesText(diffParts.join(' · '));
+    setPendingChangedGauges(changed);
     setPendingStep(step);
     setLastChosenEylem(eylem);
     setIsWhatHappenedOpen(true);
@@ -130,28 +236,65 @@ export const App: React.FC = () => {
     setIsWhatHappenedOpen(false);
 
     // Apply calculated step
-    setSureDk(pendingStep.sureDk);
-    setEtki(pendingStep.etki);
-    setMaxEtki(pendingStep.maxEtki);
-    setRisk(pendingStep.risk);
-    setKoordinasyon(pendingStep.koordinasyon);
-    setBayraklar(pendingStep.bayraklar);
-    setKararlar((prev) => [...prev, pendingStep.kararKaydi]);
+    const newSureDk = pendingStep.sureDk;
+    const newEtki = pendingStep.etki;
+    const newMaxEtki = pendingStep.maxEtki;
+    const newRisk = pendingStep.risk;
+    const newCoord = pendingStep.koordinasyon;
+    const newBayraklar = pendingStep.bayraklar;
+    const newKararlar = [...kararlar, pendingStep.kararKaydi];
+    const newEkstraMesajlar = pendingStep.ekMesaj ? [pendingStep.ekMesaj] : [];
+    const nextSahneId = pendingStep.nextSahneId;
+    const nextEndGame = pendingStep.endGame;
+    const nextEndReasons = pendingStep.endReasons;
+    const nextZiyaret = ziyaret + 1;
 
-    if (pendingStep.ekMesaj) {
-      setEkstraMesajlar([pendingStep.ekMesaj]);
-    } else {
-      setEkstraMesajlar([]);
+    setSureDk(newSureDk);
+    setEtki(newEtki);
+    setMaxEtki(newMaxEtki);
+    setRisk(newRisk);
+    setKoordinasyon(newCoord);
+    setBayraklar(newBayraklar);
+    setKararlar(newKararlar);
+    setEkstraMesajlar(newEkstraMesajlar);
+
+    // 1 saniyelik fosfor vurgusu tetikle (Requirement 6)
+    if (pendingChangedGauges) {
+      setGaugeHighlights(pendingChangedGauges);
+      setTimeout(() => {
+        setGaugeHighlights({});
+      }, 1000);
     }
 
-    if (pendingStep.endGame) {
-      setEndGame(pendingStep.endGame);
-      setEndReasons(pendingStep.endReasons);
+    if (nextEndGame) {
+      setEndGame(nextEndGame);
+      setEndReasons(nextEndReasons);
       setScreen('result');
+      clearSessionState();
     } else {
-      setCurrentSahneId(pendingStep.nextSahneId);
-      // Karar sonrası sahneye geçiş: yeni ziyaret
-      setZiyaret((prev) => prev + 1);
+      setCurrentSahneId(nextSahneId);
+      setZiyaret(nextZiyaret);
+
+      // SessionStorage kaydet (Requirement B2)
+      saveSessionState({
+        screen: 'scene',
+        seviye,
+        rol,
+        hedef,
+        sayacAcik,
+        currentSahneId: nextSahneId,
+        ziyaret: nextZiyaret,
+        sureDk: newSureDk,
+        etki: newEtki,
+        maxEtki: newMaxEtki,
+        risk: newRisk,
+        koordinasyon: newCoord,
+        bayraklar: newBayraklar,
+        kararlar: newKararlar,
+        ekstraMesajlar: newEkstraMesajlar,
+        endGame: null,
+        endReasons: [],
+      });
     }
 
     setPendingStep(null);
@@ -162,30 +305,64 @@ export const App: React.FC = () => {
     setIsWhatHappenedOpen(false);
     if (!pendingStep) return;
 
-    // Apply state changes first
-    setSureDk(pendingStep.sureDk);
-    setEtki(pendingStep.etki);
-    setMaxEtki(pendingStep.maxEtki);
-    setRisk(pendingStep.risk);
-    setKoordinasyon(pendingStep.koordinasyon);
-    setBayraklar(pendingStep.bayraklar);
-    setKararlar((prev) => [...prev, pendingStep.kararKaydi]);
+    const newSureDk = pendingStep.sureDk;
+    const newEtki = pendingStep.etki;
+    const newMaxEtki = pendingStep.maxEtki;
+    const newRisk = pendingStep.risk;
+    const newCoord = pendingStep.koordinasyon;
+    const newBayraklar = pendingStep.bayraklar;
+    const newKararlar = [...kararlar, pendingStep.kararKaydi];
+    const newEkstraMesajlar = pendingStep.ekMesaj ? [pendingStep.ekMesaj] : [];
+    const nextSahneId = pendingStep.nextSahneId;
+    const nextEndGame = pendingStep.endGame;
+    const nextEndReasons = pendingStep.endReasons;
+    const nextZiyaret = ziyaret + 1;
 
-    if (pendingStep.ekMesaj) {
-      setEkstraMesajlar([pendingStep.ekMesaj]);
-    } else {
-      setEkstraMesajlar([]);
+    setSureDk(newSureDk);
+    setEtki(newEtki);
+    setMaxEtki(newMaxEtki);
+    setRisk(newRisk);
+    setKoordinasyon(newCoord);
+    setBayraklar(newBayraklar);
+    setKararlar(newKararlar);
+    setEkstraMesajlar(newEkstraMesajlar);
+
+    if (pendingChangedGauges) {
+      setGaugeHighlights(pendingChangedGauges);
+      setTimeout(() => {
+        setGaugeHighlights({});
+      }, 1000);
     }
 
-    if (pendingStep.endGame) {
-      setEndGame(pendingStep.endGame);
-      setEndReasons(pendingStep.endReasons);
+    if (nextEndGame) {
+      setEndGame(nextEndGame);
+      setEndReasons(nextEndReasons);
       setScreen('result');
+      clearSessionState();
     } else {
-      setCurrentSahneId(pendingStep.nextSahneId);
+      setCurrentSahneId(nextSahneId);
       setOpenTutorOfferDirectly(true);
-      // Karar sonrası sahneye geçiş: yeni ziyaret
-      setZiyaret((prev) => prev + 1);
+      setZiyaret(nextZiyaret);
+
+      saveSessionState({
+        screen: 'scene',
+        seviye,
+        rol,
+        hedef,
+        sayacAcik,
+        currentSahneId: nextSahneId,
+        ziyaret: nextZiyaret,
+        sureDk: newSureDk,
+        etki: newEtki,
+        maxEtki: newMaxEtki,
+        risk: newRisk,
+        koordinasyon: newCoord,
+        bayraklar: newBayraklar,
+        kararlar: newKararlar,
+        ekstraMesajlar: newEkstraMesajlar,
+        endGame: null,
+        endReasons: [],
+      });
     }
 
     setPendingStep(null);
@@ -204,27 +381,64 @@ export const App: React.FC = () => {
       decisionCount: kararlar.length,
     });
 
-    setSureDk(timeoutStep.sureDk);
-    setEtki(timeoutStep.etki);
-    setMaxEtki(timeoutStep.maxEtki);
-    setRisk(timeoutStep.risk);
-    setKoordinasyon(timeoutStep.koordinasyon);
-    setBayraklar(timeoutStep.bayraklar);
-    setKararlar((prev) => [...prev, timeoutStep.kararKaydi]);
+    const newSureDk = timeoutStep.sureDk;
+    const newEtki = timeoutStep.etki;
+    const newMaxEtki = timeoutStep.maxEtki;
+    const newRisk = timeoutStep.risk;
+    const newCoord = timeoutStep.koordinasyon;
+    const newBayraklar = timeoutStep.bayraklar;
+    const newKararlar = [...kararlar, timeoutStep.kararKaydi];
+    const newEkstraMesajlar = timeoutStep.ekMesaj ? [timeoutStep.ekMesaj] : ekstraMesajlar;
 
-    if (timeoutStep.ekMesaj) {
-      setEkstraMesajlar([timeoutStep.ekMesaj]);
-    }
+    setSureDk(newSureDk);
+    setEtki(newEtki);
+    setMaxEtki(newMaxEtki);
+    setRisk(newRisk);
+    setKoordinasyon(newCoord);
+    setBayraklar(newBayraklar);
+    setKararlar(newKararlar);
+    setEkstraMesajlar(newEkstraMesajlar);
 
     if (timeoutStep.endGame) {
       setEndGame(timeoutStep.endGame);
       setEndReasons(timeoutStep.endReasons);
       setScreen('result');
+      clearSessionState();
+    } else {
+      saveSessionState({
+        screen: 'scene',
+        seviye,
+        rol,
+        hedef,
+        sayacAcik,
+        currentSahneId,
+        ziyaret,
+        sureDk: newSureDk,
+        etki: newEtki,
+        maxEtki: newMaxEtki,
+        risk: newRisk,
+        koordinasyon: newCoord,
+        bayraklar: newBayraklar,
+        kararlar: newKararlar,
+        ekstraMesajlar: newEkstraMesajlar,
+        endGame: null,
+        endReasons: [],
+      });
     }
-    // NOT: Zaman aşımı yeni ziyaret sayılmaz (spec 3.7) -> setZiyaret çağrılmaz
+  };
+
+  const handleExitGame = () => {
+    clearSessionState();
+    setScreen('intro');
+  };
+
+  const handleRestart = () => {
+    clearSessionState();
+    setScreen('intro');
   };
 
   const handlePlayOtherRole = () => {
+    clearSessionState();
     const otherRol: Rol = rol === 'backend' ? 'lider' : 'backend';
     handleStartGame({
       seviye,
@@ -263,9 +477,11 @@ export const App: React.FC = () => {
           ekstraMesajlar={ekstraMesajlar}
           isMock={isMock}
           isWhatHappenedOpen={isWhatHappenedOpen}
+          gaugeHighlights={gaugeHighlights}
           lastEvaluatedActionInfo={lastEvaluatedActionInfo}
           onSelectEylem={handleSelectEylem}
           onTimeout={handleTimeout}
+          onExitGame={handleExitGame}
           onOpenTutorOfferDirectly={openTutorOfferDirectly}
           onClearTutorOfferDirectly={() => setOpenTutorOfferDirectly(false)}
         />
@@ -284,7 +500,7 @@ export const App: React.FC = () => {
           hedef={hedef}
           currentRol={rol}
           onPlayOtherRole={handlePlayOtherRole}
-          onRestart={() => setScreen('intro')}
+          onRestart={handleRestart}
         />
       )}
 
@@ -300,6 +516,7 @@ export const App: React.FC = () => {
         isOpen={isWhatHappenedOpen}
         hedef={hedef}
         isEndGame={Boolean(pendingStep?.endGame)}
+        gaugeChangesText={gaugeChangesText}
         onContinue={handleContinueAfterWhatHappened}
         onOpenTutorOffer={handleOpenTutorFromOffer}
       />

@@ -23,6 +23,12 @@ interface Props {
   ekstraMesajlar?: Mesaj[];
   isMock: boolean;
   isWhatHappenedOpen?: boolean;
+  gaugeHighlights?: {
+    sure?: boolean;
+    etki?: boolean;
+    risk?: boolean;
+    koordinasyon?: boolean;
+  };
   lastEvaluatedActionInfo?: {
     secilen_eylem_metni: string;
     ne_oldu: string;
@@ -30,6 +36,7 @@ interface Props {
   } | null;
   onSelectEylem: (eylem: Eylem) => void;
   onTimeout: () => void;
+  onExitGame: () => void;
   onOpenTutorOfferDirectly?: boolean;
   onClearTutorOfferDirectly?: () => void;
 }
@@ -48,9 +55,11 @@ export const SceneScreen: React.FC<Props> = ({
   ekstraMesajlar = [],
   isMock,
   isWhatHappenedOpen = false,
+  gaugeHighlights = {},
   lastEvaluatedActionInfo = null,
   onSelectEylem,
   onTimeout,
+  onExitGame,
   onOpenTutorOfferDirectly = false,
   onClearTutorOfferDirectly,
 }) => {
@@ -61,11 +70,31 @@ export const SceneScreen: React.FC<Props> = ({
   const [isClueOpen, setIsClueOpen] = useState<boolean>(false);
   const [isTutorOpen, setIsTutorOpen] = useState<boolean>(onOpenTutorOfferDirectly);
   const [isActionProcessing, setIsActionProcessing] = useState<boolean>(false);
+  const [isExitConfirmOpen, setIsExitConfirmOpen] = useState<boolean>(false);
   const [tutorOfferMode, setTutorOfferMode] = useState<'karar_oncesi' | 'karar_sonrasi'>(
     onOpenTutorOfferDirectly ? 'karar_sonrasi' : 'karar_oncesi'
   );
 
   const clock = formatClock(sureDk);
+  const decisionNumber = oncekiKararlarMetinleri.length + 1;
+
+  // Scroll to top on scene change (C4)
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [sahne.id]);
+
+  // Trap back button (B3)
+  useEffect(() => {
+    window.history.pushState({ scene: sahne.id }, '');
+    const handlePopState = () => {
+      window.history.pushState({ scene: sahne.id }, '');
+      setIsExitConfirmOpen(true);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [sahne.id]);
 
   // Fetch AI narration on scene entry (unless mock)
   useEffect(() => {
@@ -136,10 +165,14 @@ export const SceneScreen: React.FC<Props> = ({
   // Combine extra messages (e.g. from previous action ek_mesaj or timeout) with scene messages
   const combinedMessages: Mesaj[] = [...ekstraMesajlar, ...mesajlar].slice(0, 2);
 
-  // Check if timer should be paused:
-  // "Sayaç şu durumlarda durur: yapay zekâ anlatımı beklenirken, Ne oldu, tutor, terim veya ipucu paneli açıkken, sekme arka plandayken."
+  // Sayaç duraklatma kontrolleri
   const isTimerPaused =
-    isLoadingNarrator || isClueOpen || isTutorOpen || Boolean(selectedTerm) || isWhatHappenedOpen;
+    isLoadingNarrator ||
+    isClueOpen ||
+    isTutorOpen ||
+    Boolean(selectedTerm) ||
+    isWhatHappenedOpen ||
+    isExitConfirmOpen;
 
   const handleActionClick = (eylem: Eylem) => {
     if (isActionProcessing) return; // Prevent double click
@@ -196,12 +229,12 @@ export const SceneScreen: React.FC<Props> = ({
   };
 
   return (
-    <div className="w-full max-w-xl mx-auto p-4 sm:p-6 bg-[var(--kagit)] min-h-screen flex flex-col justify-between">
+    <div className="w-full max-w-xl mx-auto p-4 sm:p-6 bg-[var(--kagit)] min-h-screen flex flex-col justify-between animate-scene-enter">
       <div>
         {/* Top Header Fiş */}
         <div className="flex items-center justify-between border-b border-[var(--cizgi)] pb-2 mb-3">
-          <div className="font-mono-code text-[11px] font-semibold text-[var(--soluk)] uppercase tracking-wider">
-            OLAY KAYIT FİŞİ · No: 0428
+          <div className="font-mono-code text-[12px] font-semibold text-[var(--soluk)] uppercase tracking-wider">
+            OLAY KAYIT FİŞİ · No: 0428 · Karar {decisionNumber} · sınır 8
           </div>
           <div className="flex items-center gap-2">
             <Timer
@@ -210,9 +243,44 @@ export const SceneScreen: React.FC<Props> = ({
               onTimeout={onTimeout}
               resetKey={sahne.id}
             />
-            <RubberStamp text={sahne.id} />
+            <RubberStamp text={sahne.id} className="animate-stamp-press" />
+            <button
+              type="button"
+              data-testid="dugme-cikis"
+              onClick={() => setIsExitConfirmOpen(true)}
+              className="text-[12px] font-mono-code text-[var(--soluk)] hover:text-[var(--damga)] px-1.5 py-0.5 border border-[var(--cizgi)] rounded-[2px] bg-[var(--fis)] cursor-pointer"
+              title="Olaydan çık"
+            >
+              Olaydan çık
+            </button>
           </div>
         </div>
+
+        {/* Olaydan Çık Onay Satırı */}
+        {isExitConfirmOpen && (
+          <div className="mb-3 p-2.5 bg-[var(--fis)] border border-[var(--damga)] rounded-[4px] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-[13px] text-[var(--murekkep)]">
+            <span className="text-[var(--damga)] font-medium">
+              Olay kaydı kapanacak, ilerleme kaybolacak.
+            </span>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                data-testid="dugme-cikis-onay"
+                onClick={onExitGame}
+                className="px-2.5 py-1 bg-[var(--damga)] text-white text-[12px] font-mono-code rounded-[2px] hover:opacity-90 cursor-pointer"
+              >
+                Girişe dön
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsExitConfirmOpen(false)}
+                className="px-2.5 py-1 bg-[var(--kagit)] border border-[var(--cizgi)] text-[var(--murekkep)] text-[12px] font-mono-code rounded-[2px] hover:bg-[var(--fis)] cursor-pointer"
+              >
+                Vazgeç
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Sahne Başlığı ve Saat */}
         <div className="flex items-baseline justify-between mb-2">
@@ -236,15 +304,16 @@ export const SceneScreen: React.FC<Props> = ({
           etki={etki}
           risk={risk}
           koordinasyon={koordinasyon}
+          highlights={gaugeHighlights}
         />
 
         {/* Anlatım Kartı */}
         <div className="bg-[var(--fis)] border border-[var(--cizgi)] rounded-[4px] p-4 my-3">
           <div className="flex items-center justify-between mb-2">
-            <span className="font-mono-code text-[11px] font-semibold text-[var(--soluk)] uppercase tracking-wider">
+            <span className="font-mono-code text-[12px] font-semibold text-[var(--soluk)] uppercase tracking-wider">
               DURUM BİLDİRİMİ
             </span>
-            <span className="font-mono-code text-[11px] text-[var(--soluk)]">
+            <span className="font-mono-code text-[12px] text-[var(--soluk)]">
               {rol === 'backend' ? 'ROL: BACKEND' : 'ROL: LİDER'}
             </span>
           </div>
@@ -282,7 +351,7 @@ export const SceneScreen: React.FC<Props> = ({
                   data-testid={`mesaj-${idx}`}
                   className="bg-[var(--fis)] border border-[var(--cizgi)] border-l-[3px] border-l-[var(--soluk)] rounded-[4px] p-2.5 text-[14px]"
                 >
-                  <div className="font-mono-code text-[11px] text-[var(--soluk)] font-semibold mb-0.5">
+                  <div className="font-mono-code text-[12px] text-[var(--soluk)] font-semibold mb-0.5">
                     {kisiAdi}
                   </div>
                   <div className="text-[var(--murekkep)] leading-snug">
@@ -299,7 +368,7 @@ export const SceneScreen: React.FC<Props> = ({
 
         {/* Kanıtlar */}
         <div className="my-4">
-          <div className="font-mono-code text-[11px] font-semibold text-[var(--soluk)] uppercase tracking-wider mb-2">
+          <div className="font-mono-code text-[12px] font-semibold text-[var(--soluk)] uppercase tracking-wider mb-2">
             İNCELENEN KANITLAR
           </div>
           <div className="space-y-2">
@@ -326,9 +395,9 @@ export const SceneScreen: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* Eylemler / Karar Seçenekleri */}
+        {/* Eylemler / Karar Seçenekleri - Terim vurgusu olmadan düz metin */}
         <div className="my-5">
-          <div className="font-mono-code text-[11px] font-semibold text-[var(--soluk)] uppercase tracking-wider mb-2">
+          <div className="font-mono-code text-[12px] font-semibold text-[var(--soluk)] uppercase tracking-wider mb-2">
             BİR MÜDAHALE SEÇİN
           </div>
           <div className="space-y-2.5">
@@ -345,10 +414,7 @@ export const SceneScreen: React.FC<Props> = ({
                 >
                   <div className="w-5 h-5 rounded-[2px] border border-[var(--cizgi)] bg-white shrink-0 mt-0.5" />
                   <div className="text-[15px] font-medium text-[var(--murekkep)] leading-snug flex-1">
-                    <HighlightedText
-                      text={eylemMetni}
-                      onSelectTerm={(term) => setSelectedTerm(term)}
-                    />
+                    {eylemMetni}
                   </div>
                 </button>
               );

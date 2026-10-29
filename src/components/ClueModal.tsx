@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 
 interface Props {
   clue: string;
@@ -7,6 +7,17 @@ interface Props {
 }
 
 export const ClueModal: React.FC<Props> = ({ clue, isOpen, onClose }) => {
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
@@ -24,8 +35,10 @@ export const ClueModal: React.FC<Props> = ({ clue, isOpen, onClose }) => {
             HAZIR İPUCU
           </span>
           <button
+            type="button"
             onClick={onClose}
-            className="text-[var(--soluk)] hover:text-[var(--murekkep)] text-[16px] px-1 font-mono-code cursor-pointer"
+            className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center text-[var(--soluk)] hover:text-[var(--murekkep)] text-[16px] font-mono-code cursor-pointer -mr-2 -my-2"
+            aria-label="Kapat"
           >
             ✕
           </button>
@@ -36,6 +49,7 @@ export const ClueModal: React.FC<Props> = ({ clue, isOpen, onClose }) => {
           </p>
         </div>
         <button
+          type="button"
           onClick={onClose}
           className="w-full h-11 bg-[var(--tukenmez)] text-white font-medium rounded-[4px] cursor-pointer"
         >

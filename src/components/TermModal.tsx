@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Terim } from '../types/game.js';
 
 interface Props {
@@ -7,6 +7,17 @@ interface Props {
 }
 
 export const TermModal: React.FC<Props> = ({ term, onClose }) => {
+  useEffect(() => {
+    if (!term) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [term, onClose]);
+
   if (!term) return null;
 
   return (
@@ -21,7 +32,7 @@ export const TermModal: React.FC<Props> = ({ term, onClose }) => {
       >
         <div className="flex items-start justify-between border-b border-[var(--cizgi)] pb-2 mb-2">
           <div className="flex items-center gap-2">
-            <span className="font-mono-code text-[11px] font-semibold text-[var(--soluk)] uppercase tracking-wider">
+            <span className="font-mono-code text-[12px] font-semibold text-[var(--soluk)] uppercase tracking-wider">
               TERİM SÖZLÜĞÜ
             </span>
             <span className="font-mono-code text-[14px] font-bold text-[var(--tukenmez)]">
@@ -29,8 +40,10 @@ export const TermModal: React.FC<Props> = ({ term, onClose }) => {
             </span>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="text-[var(--soluk)] hover:text-[var(--murekkep)] text-[16px] px-1 font-mono-code cursor-pointer"
+            className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center text-[var(--soluk)] hover:text-[var(--murekkep)] text-[16px] font-mono-code cursor-pointer -mr-2 -my-2"
+            aria-label="Kapat"
           >
             ✕
           </button>
@@ -40,8 +53,9 @@ export const TermModal: React.FC<Props> = ({ term, onClose }) => {
         </p>
         <div className="mt-3 pt-2 tear-line flex justify-end">
           <button
+            type="button"
             onClick={onClose}
-            className="text-[12px] font-mono-code text-[var(--soluk)] hover:text-[var(--murekkep)] px-2 py-1 border border-[var(--cizgi)] rounded-[4px] bg-[var(--kagit)] cursor-pointer"
+            className="text-[12px] font-mono-code text-[var(--soluk)] hover:text-[var(--murekkep)] px-3 py-1.5 border border-[var(--cizgi)] rounded-[4px] bg-[var(--kagit)] cursor-pointer"
           >
             Kapat
           </button>

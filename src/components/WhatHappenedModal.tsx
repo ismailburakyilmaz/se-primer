@@ -6,6 +6,7 @@ interface Props {
   isOpen: boolean;
   hedef: Hedef;
   isEndGame?: boolean;
+  gaugeChangesText?: string;
   onContinue: () => void;
   onOpenTutorOffer: () => void;
 }
@@ -15,6 +16,7 @@ export const WhatHappenedModal: React.FC<Props> = ({
   isOpen,
   hedef,
   isEndGame = false,
+  gaugeChangesText = '',
   onContinue,
   onOpenTutorOffer,
 }) => {
@@ -30,18 +32,24 @@ export const WhatHappenedModal: React.FC<Props> = ({
         data-testid="panel-ne-oldu"
         className="w-full sm:max-w-lg bg-[var(--fis)] border border-[var(--cizgi)] rounded-t-[4px] sm:rounded-[4px] p-5 text-[var(--murekkep)] max-h-[85vh] overflow-y-auto"
       >
-        <div className="flex items-center justify-between border-b border-[var(--cizgi)] pb-2 mb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[var(--cizgi)] pb-2 mb-3 gap-1">
           <span className="font-mono-code text-[12px] font-semibold text-[var(--soluk)] uppercase tracking-wider">
             MÜDAHALE SONUCU · DEĞERLENDİRME
           </span>
-          <span className="font-mono-code text-[11px] text-[var(--soluk)]">
-            +{eylem.sure_dk} dk
-          </span>
+          {gaugeChangesText ? (
+            <span className="font-mono-code text-[12px] text-[var(--tukenmez)] font-semibold">
+              {gaugeChangesText}
+            </span>
+          ) : (
+            <span className="font-mono-code text-[12px] text-[var(--soluk)]">
+              +{eylem.sure_dk} dk
+            </span>
+          )}
         </div>
 
         {/* Ne oldu */}
         <div className="mb-4">
-          <span className="font-mono-code text-[11px] font-bold text-[var(--murekkep)] uppercase tracking-wider block mb-1">
+          <span className="font-mono-code text-[12px] font-bold text-[var(--murekkep)] uppercase tracking-wider block mb-1">
             NE OLDU:
           </span>
           <div
@@ -54,7 +62,7 @@ export const WhatHappenedModal: React.FC<Props> = ({
 
         {/* Neden oldu */}
         <div className="mb-4">
-          <span className="font-mono-code text-[11px] font-bold text-[var(--soluk)] uppercase tracking-wider block mb-1">
+          <span className="font-mono-code text-[12px] font-bold text-[var(--soluk)] uppercase tracking-wider block mb-1">
             NEDEN OLDU:
           </span>
           <div

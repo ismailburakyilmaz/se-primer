@@ -19,10 +19,20 @@ export const IntroScreen: React.FC<Props> = ({ onStart, onOpenEval, seedParam })
   const [hedef, setHedef] = useState<Hedef>('Öğrenmek');
   const [sayacAcik, setSayacAcik] = useState<boolean>(false);
   const [versionClickCount, setVersionClickCount] = useState<number>(0);
+  const [isNasilOynanirOpen, setIsNasilOynanirOpen] = useState<boolean>(false);
+
+  const handleSeviyeChange = (newSeviye: Seviye) => {
+    setSeviye(newSeviye);
+    if (newSeviye === 'Deneyimliyim') {
+      setSayacAcik(true);
+    } else {
+      setSayacAcik(false);
+    }
+  };
 
   const handleHedefChange = (newHedef: Hedef) => {
     setHedef(newHedef);
-    if (newHedef === 'Baskı altında karar') {
+    if (newHedef === 'Baskı altında karar' && seviye === 'Deneyimliyim') {
       setSayacAcik(true);
     }
   };
@@ -72,7 +82,7 @@ export const IntroScreen: React.FC<Props> = ({ onStart, onOpenEval, seedParam })
         </div>
 
         {/* Başlık */}
-        <div className="mb-6">
+        <div className="mb-4">
           <h1 className="font-serif-heading text-[32px] font-semibold text-[var(--murekkep)] leading-tight mb-1">
             SE Primer
           </h1>
@@ -81,16 +91,44 @@ export const IntroScreen: React.FC<Props> = ({ onStart, onOpenEval, seedParam })
           </p>
         </div>
 
+        {/* Nasıl Oynanır? Açılır-Kapanır Bölüm */}
+        <div className="mb-5 bg-[var(--fis)] border border-[var(--cizgi)] rounded-[4px] p-3">
+          <button
+            type="button"
+            onClick={() => setIsNasilOynanirOpen(!isNasilOynanirOpen)}
+            className="w-full flex items-center justify-between text-left font-mono-code text-[12px] font-semibold text-[var(--tukenmez)] hover:underline cursor-pointer"
+          >
+            <span>[?] Nasıl oynanır?</span>
+            <span className="text-[12px]">{isNasilOynanirOpen ? '▲ Kapat' : '▼ Aç'}</span>
+          </button>
+          {isNasilOynanirOpen && (
+            <div data-testid="nasil-oynanir" className="mt-3 pt-2.5 border-t border-[var(--cizgi)] space-y-2 text-[13px] text-[var(--murekkep)]">
+              <div className="flex items-start gap-2">
+                <span className="font-mono-code text-[12px] text-[var(--soluk)] font-bold">1.</span>
+                <span>Kanıtları oku: <strong>DOĞRULANDI</strong> kesin, <strong>BELİRTİ</strong> ipucudur.</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="font-mono-code text-[12px] text-[var(--soluk)] font-bold">2.</span>
+                <span>Bir müdahale seç; her kararın ne olduğunu ve neden olduğunu göreceksin.</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="font-mono-code text-[12px] text-[var(--soluk)] font-bold">3.</span>
+                <span>Takılırsan tutora sor: cevabı söylemez, düşünmene yardım eder.</span>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* 1. Soru: Seviye */}
         <div className="mb-5 bg-[var(--fis)] border border-[var(--cizgi)] rounded-[4px] p-4">
-          <span className="font-mono-code text-[11px] font-semibold text-[var(--soluk)] uppercase tracking-wider block mb-2">
+          <span className="font-mono-code text-[12px] font-semibold text-[var(--soluk)] uppercase tracking-wider block mb-2">
             1. SEVİYENİZİ SEÇİN
           </span>
           <div className="space-y-2">
             <button
               type="button"
               data-testid="secim-seviye-yeni"
-              onClick={() => setSeviye('Yeni başladım')}
+              onClick={() => handleSeviyeChange('Yeni başladım')}
               className={`w-full text-left p-3 border rounded-[4px] min-h-[48px] flex items-center gap-3 cursor-pointer transition-colors ${
                 seviye === 'Yeni başladım'
                   ? 'border-[var(--tukenmez)] bg-[var(--kagit)]'
@@ -119,7 +157,7 @@ export const IntroScreen: React.FC<Props> = ({ onStart, onOpenEval, seedParam })
             <button
               type="button"
               data-testid="secim-seviye-deneyimli"
-              onClick={() => setSeviye('Deneyimliyim')}
+              onClick={() => handleSeviyeChange('Deneyimliyim')}
               className={`w-full text-left p-3 border rounded-[4px] min-h-[48px] flex items-center gap-3 cursor-pointer transition-colors ${
                 seviye === 'Deneyimliyim'
                   ? 'border-[var(--tukenmez)] bg-[var(--kagit)]'
@@ -149,7 +187,7 @@ export const IntroScreen: React.FC<Props> = ({ onStart, onOpenEval, seedParam })
 
         {/* 2. Soru: Rol */}
         <div className="mb-5 bg-[var(--fis)] border border-[var(--cizgi)] rounded-[4px] p-4">
-          <span className="font-mono-code text-[11px] font-semibold text-[var(--soluk)] uppercase tracking-wider block mb-2">
+          <span className="font-mono-code text-[12px] font-semibold text-[var(--soluk)] uppercase tracking-wider block mb-2">
             2. KRİZDEKİ ROLÜNÜZ
           </span>
           <div className="space-y-2">
@@ -244,7 +282,7 @@ export const IntroScreen: React.FC<Props> = ({ onStart, onOpenEval, seedParam })
 
         {/* 3. Soru: Hedef */}
         <div className="mb-5 bg-[var(--fis)] border border-[var(--cizgi)] rounded-[4px] p-4">
-          <span className="font-mono-code text-[11px] font-semibold text-[var(--soluk)] uppercase tracking-wider block mb-2">
+          <span className="font-mono-code text-[12px] font-semibold text-[var(--soluk)] uppercase tracking-wider block mb-2">
             3. HEDEFİNİZ
           </span>
           <div className="space-y-2">
@@ -374,7 +412,7 @@ export const IntroScreen: React.FC<Props> = ({ onStart, onOpenEval, seedParam })
       </div>
 
       {/* Sürüm yazısı */}
-      <div className="mt-8 pt-4 border-t border-[var(--cizgi)] flex justify-between items-center text-[11px] text-[var(--soluk)] font-mono-code">
+      <div className="mt-8 pt-4 border-t border-[var(--cizgi)] flex justify-between items-center text-[12px] text-[var(--soluk)] font-mono-code">
         <span>SE Primer · Şifa Hastanesi Olayı</span>
         <button
           type="button"

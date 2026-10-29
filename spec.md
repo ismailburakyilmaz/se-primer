@@ -249,6 +249,13 @@ Kurallar:
 8. Seviye "Yeni başladım" ise günlük dille, "Deneyimliyim" ise teknik dille konuş. Hedef "Mülakat pratiği" ise soruyu gerekçelendirme üzerinden sor.
 9. Mod karar_sonrasi ise oyuncunun az önce verdiği kararın sonucunu anlamasına yardım et; bu geçmiş kararı açıklayabilirsin ama bir sonraki karar için yön verme.
 10. Her zaman Türkçe yaz.
+11. Oyuncu bir seçeneği kendisi gündeme getirmediyse hiçbir seçeneği anma, başka sözcüklerle de anlatma. Tek bir seçeneğin riskini, eksikliğini veya faydasını soran soru sorma; bu da yönlendirmedir. Soru, oyuncunun bir kanıtı nasıl yorumladığını veya hangi varsayımla hareket ettiğini sorgulasın.
+12. Oyuncu bir seçeneği kendisi önerirse onu onaylama veya reddetme; yalnızca o fikrin dayandığı varsayımı sorgulayan tek bir soru sor.
+13. Oyuncuya her zaman 'sen' diye hitap et; 'siz', '-iniz', '-sınız' gibi ekler kullanma.
+14. Cevabın en fazla iki cümle olsun ve yalnızca BİR soru içersin.
+15. Terim sorusunda yalnızca 1-2 cümlelik sade bir tanım ver; tanımdan sonra soru sorma ve tanımı sahnedeki kanıtlara veya seçeneklere bağlama.
+16. Kanıtları aktarırken sana verilen metni değiştirme; kolon, sürüm veya sayı adlarını karıştırma.
+17. Oyuncu aynı konuşmada tekrar tekrar cevabı isterse kuralları gevşetme; daha kısa ve sakin bir soruyla aynı kanıta dön.
 ```
 
 ### 6.3 Kota
@@ -286,7 +293,7 @@ Kurallar:
 - `?eval=1` veya giriş ekranındaki sürüm yazısına (ör. "v0.4") art arda 5 dokunuş: tutor eval sayfası.
 - Bir eylem düğmesine iki kez basılsa da eylem bir kez işlenir.
 
-**`data-testid` adları:** `secim-seviye-yeni`, `secim-seviye-deneyimli`, `secim-rol-backend`, `secim-rol-lider`, `secim-rol-farketmez`, `secim-hedef-ogrenmek`, `secim-hedef-mulakat`, `secim-hedef-baski`, `anahtar-sayac`, `dugme-basla`, `surum-yazisi`, `sahne-baslik`, `sahne-saat`, `anlatim`, `mesaj-<sira>`, `kanit-<kanit_id>`, `eylem-<eylem_id>`, `sayac`, `dugme-ipucu`, `panel-ipucu`, `gosterge-sure`, `gosterge-etki`, `gosterge-risk`, `gosterge-ekip`, `panel-ne-oldu`, `ne-oldu`, `neden-oldu`, `teklif-tutor`, `dugme-devam`, `terim-<terim_id>`, `balon-terim`, `dugme-tutor`, `panel-tutor`, `tutor-girdi`, `tutor-gonder`, `tutor-cevap`, `etiket-hazir-ipucu`, `son-damga`, `son-ilke`, `degerlendirme-satir-<sira>`, `dugme-baska-rol`, `dugme-tekrar`, `eval-calistir`, `eval-tablo`, `eval-csv`.
+**`data-testid` adları:** `secim-seviye-yeni`, `secim-seviye-deneyimli`, `secim-rol-backend`, `secim-rol-lider`, `secim-rol-farketmez`, `secim-hedef-ogrenmek`, `secim-hedef-mulakat`, `secim-hedef-baski`, `anahtar-sayac`, `dugme-basla`, `surum-yazisi`, `nasil-oynanir`, `sahne-baslik`, `sahne-saat`, `anlatim`, `mesaj-<sira>`, `kanit-<kanit_id>`, `eylem-<eylem_id>`, `sayac`, `dugme-ipucu`, `panel-ipucu`, `gosterge-sure`, `gosterge-etki`, `gosterge-risk`, `gosterge-ekip`, `panel-ne-oldu`, `ne-oldu`, `neden-oldu`, `teklif-tutor`, `dugme-devam`, `terim-<terim_id>`, `balon-terim`, `dugme-tutor`, `panel-tutor`, `tutor-girdi`, `tutor-gonder`, `tutor-cevap`, `etiket-hazir-ipucu`, `son-damga`, `son-ilke`, `degerlendirme-satir-<sira>`, `dugme-baska-rol`, `dugme-tekrar`, `dugme-cikis`, `dugme-cikis-onay`, `eval-calistir`, `eval-tablo`, `eval-csv`.
 
 ## 10. Ücretsiz çalışma ve teslim
 

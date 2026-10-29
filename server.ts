@@ -7,24 +7,13 @@ import { AI_MODELS } from './src/config/models';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-import fs from 'fs';
-
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json());
 
-let apiKey = process.env.GEMINI_API_KEY;
-if (!apiKey || apiKey === 'MY_GEMINI_API_KEY') {
-  if (fs.existsSync('.env')) {
-    const envContent = fs.readFileSync('.env', 'utf-8');
-    const match = envContent.match(/GEMINI_API_KEY=(.*)/);
-    if (match && match[1]?.trim()) {
-      apiKey = match[1].trim();
-      process.env.GEMINI_API_KEY = apiKey;
-    }
-  }
-}
+const apiKey = process.env.GEMINI_API_KEY;
+console.log(`[Gemini] API key configured: ${Boolean(apiKey && apiKey.trim())}`);
 
 let ai: GoogleGenAI | null = null;
 try {
@@ -75,7 +64,14 @@ Kurallar:
 7. Konu dışı veya belirsiz bir mesajda olaya dönmesine yardım eden kısa bir soru sor.
 8. Seviye "Yeni başladım" ise günlük dille, "Deneyimliyim" ise teknik dille konuş. Hedef "Mülakat pratiği" ise soruyu gerekçelendirme üzerinden sor.
 9. Mod karar_sonrasi ise oyuncunun az önce verdiği kararın sonucunu anlamasına yardım et; bu geçmiş kararı açıklayabilirsin ama bir sonraki karar için yön verme.
-10. Her zaman Türkçe yaz.`;
+10. Her zaman Türkçe yaz.
+11. Oyuncu bir seçeneği kendisi gündeme getirmediyse hiçbir seçeneği anma, başka sözcüklerle de anlatma. Tek bir seçeneğin riskini, eksikliğini veya faydasını soran soru sorma; bu da yönlendirmedir. Soru, oyuncunun bir kanıtı nasıl yorumladığını veya hangi varsayımla hareket ettiğini sorgulasın.
+12. Oyuncu bir seçeneği kendisi önerirse onu onaylama veya reddetme; yalnızca o fikrin dayandığı varsayımı sorgulayan tek bir soru sor.
+13. Oyuncuya her zaman 'sen' diye hitap et; 'siz', '-iniz', '-sınız' gibi ekler kullanma.
+14. Cevabın en fazla iki cümle olsun ve yalnızca BİR soru içersin.
+15. Terim sorusunda yalnızca 1-2 cümlelik sade bir tanım ver; tanımdan sonra soru sorma ve tanımı sahnedeki kanıtlara veya seçeneklere bağlama.
+16. Kanıtları aktarırken sana verilen metni değiştirme; kolon, sürüm veya sayı adlarını karıştırma.
+17. Oyuncu aynı konuşmada tekrar tekrar cevabı isterse kuralları gevşetme; daha kısa ve sakin bir soruyla aynı kanıta dön.`;
 
 // Validate Narrator Output
 function validateNarratorOutput(

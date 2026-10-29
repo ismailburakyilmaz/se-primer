@@ -6,6 +6,7 @@ interface EvalRowResult {
   sahne: string;
   rol: string;
   tur: string;
+  talimat_surumu: string;
   seviye: string;
   hedef: string;
   ogrenci_girdisi: string;
@@ -29,6 +30,7 @@ export const EvalScreen: React.FC<Props> = ({ onBack, isMock }) => {
       sahne: inp.sahne,
       rol: inp.rol,
       tur: inp.tur || '',
+      talimat_surumu: 'v2',
       seviye: inp.seviye,
       hedef: inp.hedef,
       ogrenci_girdisi: inp.ogrenci_girdisi,
@@ -184,6 +186,7 @@ export const EvalScreen: React.FC<Props> = ({ onBack, isMock }) => {
       'Sahne',
       'Rol',
       'Tür',
+      'Talimat Sürümü',
       'Seviye',
       'Hedef',
       'Öğrenci Girdisi',
@@ -202,6 +205,7 @@ export const EvalScreen: React.FC<Props> = ({ onBack, isMock }) => {
       escapeCsv(r.sahne),
       escapeCsv(r.rol),
       escapeCsv(r.tur),
+      escapeCsv(r.talimat_surumu),
       escapeCsv(r.seviye),
       escapeCsv(r.hedef),
       escapeCsv(r.ogrenci_girdisi),
@@ -286,10 +290,11 @@ export const EvalScreen: React.FC<Props> = ({ onBack, isMock }) => {
       <div className="overflow-x-auto border border-[var(--cizgi)] rounded-[4px] bg-[var(--fis)]">
         <table data-testid="eval-tablo" className="w-full text-left border-collapse text-[13px]">
           <thead>
-            <tr className="border-b border-[var(--cizgi)] bg-[var(--kagit)] font-mono-code text-[11px] text-[var(--soluk)]">
+            <tr className="border-b border-[var(--cizgi)] bg-[var(--kagit)] font-mono-code text-[12px] text-[var(--soluk)]">
               <th className="p-2 border-r border-[var(--cizgi)]">ID</th>
               <th className="p-2 border-r border-[var(--cizgi)]">Sahne / Rol</th>
               <th className="p-2 border-r border-[var(--cizgi)]">Tür</th>
+              <th className="p-2 border-r border-[var(--cizgi)]">Talimat</th>
               <th className="p-2 border-r border-[var(--cizgi)]">Öğrenci Girdisi</th>
               <th className="p-2 border-r border-[var(--cizgi)]">Beklenen Davranış</th>
               <th className="p-2 border-r border-[var(--cizgi)]">Tutor Cevabı</th>
@@ -307,11 +312,14 @@ export const EvalScreen: React.FC<Props> = ({ onBack, isMock }) => {
                 <td className="p-2 border-r border-[var(--cizgi)] font-mono-code font-bold">
                   {row.id}
                 </td>
-                <td className="p-2 border-r border-[var(--cizgi)] font-mono-code text-[11px]">
+                <td className="p-2 border-r border-[var(--cizgi)] font-mono-code text-[12px]">
                   {row.sahne} · {row.rol}
                 </td>
-                <td className="p-2 border-r border-[var(--cizgi)] font-mono-code text-[11px] text-[var(--soluk)]">
+                <td className="p-2 border-r border-[var(--cizgi)] font-mono-code text-[12px] text-[var(--soluk)]">
                   {row.tur}
+                </td>
+                <td className="p-2 border-r border-[var(--cizgi)] font-mono-code text-[12px] text-[var(--tukenmez)] font-semibold">
+                  {row.talimat_surumu}
                 </td>
                 <td className="p-2 border-r border-[var(--cizgi)] font-medium text-[var(--murekkep)] max-w-xs">
                   "{row.ogrenci_girdisi}"
@@ -321,12 +329,12 @@ export const EvalScreen: React.FC<Props> = ({ onBack, isMock }) => {
                 </td>
                 <td className="p-2 border-r border-[var(--cizgi)] max-w-md">
                   {row.status === 'running' && (
-                    <span className="font-mono-code text-[11px] text-[var(--tukenmez)] animate-pulse">
+                    <span className="font-mono-code text-[12px] text-[var(--tukenmez)] animate-pulse">
                       Çalışıyor...
                     </span>
                   )}
                   {row.status === 'idle' && (
-                    <span className="font-mono-code text-[11px] text-[var(--soluk)]">
+                    <span className="font-mono-code text-[12px] text-[var(--soluk)]">
                       Bekliyor
                     </span>
                   )}
@@ -341,13 +349,13 @@ export const EvalScreen: React.FC<Props> = ({ onBack, isMock }) => {
                     </span>
                   )}
                 </td>
-                <td className="p-2 border-r border-[var(--cizgi)] font-mono-code text-[11px] whitespace-nowrap">
+                <td className="p-2 border-r border-[var(--cizgi)] font-mono-code text-[12px] whitespace-nowrap">
                   {row.model}
                 </td>
-                <td className="p-2 border-r border-[var(--cizgi)] font-mono-code text-[11px] whitespace-nowrap">
+                <td className="p-2 border-r border-[var(--cizgi)] font-mono-code text-[12px] whitespace-nowrap">
                   {row.durationMs ? `${row.durationMs} ms` : '-'}
                 </td>
-                <td className="p-2 font-mono-code text-[11px] text-[var(--soluk)] whitespace-nowrap">
+                <td className="p-2 font-mono-code text-[12px] text-[var(--soluk)] whitespace-nowrap">
                   {row.tarihSaat || '-'}
                 </td>
               </tr>
