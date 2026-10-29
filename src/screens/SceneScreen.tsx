@@ -248,7 +248,7 @@ export const SceneScreen: React.FC<Props> = ({
               type="button"
               data-testid="dugme-cikis"
               onClick={() => setIsExitConfirmOpen(true)}
-              className="text-[12px] font-mono-code text-[var(--soluk)] hover:text-[var(--damga)] px-1.5 py-0.5 border border-[var(--cizgi)] rounded-[2px] bg-[var(--fis)] cursor-pointer"
+              className="text-[12px] font-mono-code text-[var(--soluk)] hover:text-[var(--murekkep)] whitespace-nowrap shrink-0 px-2 py-1 border border-[var(--cizgi)] rounded-[2px] bg-[var(--fis)] cursor-pointer"
               title="Olaydan çık"
             >
               Olaydan çık
