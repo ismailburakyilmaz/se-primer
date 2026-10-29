@@ -105,7 +105,7 @@ body {
 
 @media (prefers-reduced-motion: no-preference) {
   .animate-scene-enter {
-    animation: sceneEnter 200ms ease-out forwards;
+    animation: sceneEnter 200ms ease-out backwards;
   }
   .animate-stamp-press {
     animation: stampPress 300ms cubic-bezier(0.2, 0, 0, 1) forwards;
