@@ -172,7 +172,7 @@ export const EvalScreen: React.FC<Props> = ({ onBack, isMock }) => {
     for (let i = 0; i < EVAL_INPUTS.length; i++) {
       if (i > 0) {
         // İstekler arasında 5 saniye bekle
-        await new Promise((resolve) => setTimeout(resolve, 5000));
+        await new Promise((resolve) => setTimeout(resolve, 13000));
       }
       await runSingleEval(i);
       setProgress(i + 1);
