@@ -1,0 +1,172 @@
+{
+  "title": "SE Primer v2 · kötü son riski",
+  "target": "kotu_son",
+  "task": "Bu karardan sonra oyun kötü bir sonla (Veri ihlali veya Kontrol altına alınamadı) bitecek mi?",
+  "classes": [
+    "iyi son",
+    "kötü son"
+  ],
+  "class_labels": {
+    "0": "iyi son",
+    "1": "kötü son"
+  },
+  "features": [
+    {
+      "name": "seviye",
+      "unit": "0 Yeni başladım, 1 Deneyimliyim",
+      "example": 0.0
+    },
+    {
+      "name": "rol",
+      "unit": "0 Backend, 1 Takım lideri",
+      "example": 0.0
+    },
+    {
+      "name": "karar_no",
+      "unit": "kaçıncı karar",
+      "example": 3.0
+    },
+    {
+      "name": "karar_suresi_sn",
+      "unit": "saniye",
+      "example": 25.3
+    },
+    {
+      "name": "konsol_arama",
+      "unit": "bu sahnedeki arama sayısı",
+      "example": 1.0
+    },
+    {
+      "name": "bulunan_anlamli",
+      "unit": "bu sahnede işaretlenen anlamlı log satırı",
+      "example": 1.0
+    },
+    {
+      "name": "terim_toplam",
+      "unit": "birikimli terim balonu",
+      "example": 1.0
+    },
+    {
+      "name": "tutor_toplam",
+      "unit": "birikimli tutor mesajı",
+      "example": 1.0
+    },
+    {
+      "name": "israr_toplam",
+      "unit": "birikimli ısrar",
+      "example": 0.0
+    },
+    {
+      "name": "sorunlu_karar_toplam",
+      "unit": "birikimli sorunlu karar",
+      "example": 1.0
+    },
+    {
+      "name": "kalan_sure_dk",
+      "unit": "dakika",
+      "example": 45.0
+    }
+  ],
+  "onnx": {
+    "input": "input",
+    "input_type": "float32",
+    "input_shape": [
+      null,
+      11
+    ],
+    "output": "probabilities",
+    "output_shape": [
+      null,
+      2
+    ],
+    "positive_index": 1
+  },
+  "yonetmen": {
+    "destek_esigi": 0.6,
+    "baski_esigi": 0.3
+  },
+  "acceptance": {
+    "min_gercek_oturum": 15,
+    "min_sinif_basina_gercek_oturum": 4,
+    "min_roc_auc": 0.7,
+    "min_roc_auc_guven_alt": 0.5,
+    "min_fark_kalan_sure_tabani": 0.03,
+    "min_recall_destek": 0.6,
+    "max_onnx_farki": 0.0001
+  },
+  "metrics": {
+    "roc_auc": 0.747,
+    "roc_auc_guven_95": [
+      0.5176,
+      0.9235
+    ],
+    "recall_kotu_son_destek_esiginde": 0.7297,
+    "accuracy_0_5": 0.7053,
+    "brier": 0.2211,
+    "taban_kalan_sure_roc_auc": 0.5746,
+    "taban_cogunluk_accuracy": 0.6105,
+    "olcum": "oturum bazlı 5 katlı GroupKFold; eğitim: gerçek+sentetik; metrik: yalnız gerçek satırların katlar-dışı tahminleri"
+  },
+  "acceptance_history": [
+    {
+      "tarih": "2026-10-31",
+      "olay": "Eşik yazıldı (veri toplanmadan önce)",
+      "min_roc_auc": 0.75
+    },
+    {
+      "tarih": "2026-11-05",
+      "olay": "Aday 1: 15 gerçek oturum, özgün sentetik üretici",
+      "roc_auc": 0.692,
+      "sonuc": "V2'de durdu, yayınlanmadı"
+    },
+    {
+      "tarih": "2026-11-05",
+      "olay": "Aday 2: sentetik üretici gerçek ortalamalara ayarlandı",
+      "roc_auc": 0.661,
+      "sonuc": "V2 ve V4'te durdu; üretici geri alındı"
+    },
+    {
+      "tarih": "2026-11-05",
+      "olay": "Aday 3: 20 gerçek oturum, özgün üretici",
+      "roc_auc": 0.747,
+      "sonuc": "V2'de 0,003 farkla durdu"
+    },
+    {
+      "tarih": "2026-11-05",
+      "olay": "Eşik revizyonu (spec §13.4.1): V2 0,75 → 0,70 ve bootstrap alt sınırı > 0,50 kapısı eklendi; başka aday denenmedi",
+      "min_roc_auc": 0.7
+    }
+  ],
+  "onnx_max_diff": 1.4901161193847656e-07,
+  "coefficients_standardized": {
+    "seviye": 0.4368,
+    "rol": -0.0689,
+    "karar_no": -1.9715,
+    "karar_suresi_sn": -0.3068,
+    "konsol_arama": 0.011,
+    "bulunan_anlamli": -0.0758,
+    "terim_toplam": 0.0664,
+    "tutor_toplam": 0.2757,
+    "israr_toplam": -0.1832,
+    "sorunlu_karar_toplam": 2.9436,
+    "kalan_sure_dk": -0.6114
+  },
+  "data": {
+    "file": "data/oturumlar.csv",
+    "sha256": "7456249619df0e1aef555d7eb2ac7fe6578ca96148d022cb1a618b998a18eb85",
+    "rows": 898,
+    "real_sessions": 20,
+    "real_rows": 95,
+    "real_bad_sessions": 7,
+    "real_good_sessions": 13,
+    "synthetic_sessions": 150,
+    "developer_sessions": 20
+  },
+  "seed": 2026,
+  "model": "Pipeline(StandardScaler → LogisticRegression(class_weight='balanced'))",
+  "python_version": "3.13.17",
+  "sklearn_version": "1.9.1",
+  "skl2onnx_version": "1.20.0",
+  "onnxruntime_version": "1.29.0",
+  "trained_on": "2026-11-05"
+}

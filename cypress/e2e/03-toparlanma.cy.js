@@ -26,10 +26,15 @@ describe('Toparlanma yolları', () => {
 
   it('süre bütçeyi aşınca "Kontrol altına alınamadı"; bütçeye eşit süre kayıp değildir', () => {
     cy.basla({ rol: 'backend' });
-    for (let i = 0; i < 5; i += 1) cy.sec('S1_disk'); // 5 × 20 dk = 100 dk
+    // v2: sonucu değiştirmeyen bir seçenek ikinci kez seçilemez (spec §3.5, "DENENDİ")
+    cy.sec('S1_disk'); // 20 dk, S1'de kalır
+    cy.tid('denendi-S1_disk').should('exist');
+    cy.tid('eylem-S1_disk').should('have.attr', 'aria-disabled', 'true');
+    // 20 + 10 + 15 + 20 + 5 + 30 = 100 dk = bütçe
+    ['S1_yeniden_baslat', 'S1_incele', 'S2_bekle', 'S2_sms_kapat', 'S2R_telefon'].forEach((e) => cy.sec(e));
     cy.tid('sahne-saat').should('have.text', '09:40');
-    cy.tid('sahne-baslik').should('be.visible');
-    cy.sec('S1_disk'); // 120 dk > 100
+    cy.tid('sahne-baslik').should('be.visible'); // 100 = bütçe, oyun sürer
+    cy.sec('S2R_gorunum'); // +25 → 125 > 100
     cy.tid('son-damga').should('contain', 'KONTROL ALTINA ALINAMADI');
   });
 });

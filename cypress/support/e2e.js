@@ -1,16 +1,17 @@
 // SE Primer — ortak komutlar.
 // Bütün testler ?mock=1 ile çalışır: Gemini çağrılmaz, anlatım kayıtlı metinden gelir.
+// v1 regresyon testleri ?model=kapali ile çalışır (Yönetmen hep Olağan = v1 davranışı); Yönetmen testleri 09'da.
 
 const SECIM = {
   seviye: { yeni: 'secim-seviye-yeni', deneyimli: 'secim-seviye-deneyimli' },
-  rol: { backend: 'secim-rol-backend', lider: 'secim-rol-lider', farketmez: 'secim-rol-farketmez' },
+  rol: { backend: 'secim-rol-backend', lider: 'secim-rol-lider' },
   hedef: { ogrenmek: 'secim-hedef-ogrenmek', mulakat: 'secim-hedef-mulakat', baski: 'secim-hedef-baski' },
 };
 
 Cypress.Commands.add('tid', (id) => cy.get(`[data-testid="${id}"]`));
 
 // Girişteki 3 soruyu cevaplayıp oyunu başlatır.
-Cypress.Commands.add('basla', ({ seviye = 'yeni', rol = 'backend', hedef = 'ogrenmek', sayac = false, url = '/?mock=1' } = {}) => {
+Cypress.Commands.add('basla', ({ seviye = 'yeni', rol = 'backend', hedef = 'ogrenmek', sayac = false, url = '/?mock=1&model=kapali' } = {}) => {
   cy.visit(url);
   cy.tid(SECIM.seviye[seviye]).click();
   cy.tid(SECIM.rol[rol]).click();

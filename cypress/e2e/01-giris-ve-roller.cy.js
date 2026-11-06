@@ -4,7 +4,7 @@ describe('Giriş ve roller', () => {
     cy.visit('/?mock=1');
     [
       'secim-seviye-yeni', 'secim-seviye-deneyimli',
-      'secim-rol-backend', 'secim-rol-lider', 'secim-rol-farketmez',
+      'secim-rol-backend', 'secim-rol-lider',
       'secim-hedef-ogrenmek', 'secim-hedef-mulakat', 'secim-hedef-baski',
       'dugme-basla', 'surum-yazisi',
     ].forEach((id) => cy.tid(id).should('exist'));
