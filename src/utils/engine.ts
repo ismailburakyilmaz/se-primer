@@ -94,6 +94,13 @@ export function processDecision(params: {
     oAn: eylem.degerlendirme.o_an,
     sonradan: eylem.degerlendirme.sonradan,
     varsayim: eylem.degerlendirme.varsayim,
+    oAnMantigi: eylem.degerlendirme.o_an_mantigi,
+    eylemId: eylem.id,
+    eylemTur: eylem.tur,
+    sahneId: currentSahne.id,
+    mudurOnerisi: Boolean(eylem.mudur_onerisi),
+    yetkiDisi: Boolean(eylem.yetki_disi),
+    veriKorumayan: Boolean(eylem.veri_korumayan),
   };
 
   // 7. Bitiş kontrol sırası (spec §3.8):
@@ -161,6 +168,8 @@ export function processTimeout(params: {
     oAn: 'Karar sayacı doldu; müdahale gecikti.',
     sonradan: 'Bekleme süresince randevu talepleri ve kuyruk birikmeye devam etti.',
     varsayim: 'Karar vermeyi ertelemenin yeni bilgi getireceğini varsaydın.',
+    oAnMantigi: 'Karar vermemek de bir karardı: o an bilgi eksikti ve her seçeneğin bir bedeli vardı.',
+    sahneId: currentSahne.id,
     isZamanAsimi: true,
   };
 
@@ -187,5 +196,21 @@ export function processTimeout(params: {
     endGame,
     endReasons,
     ekMesaj: SCENARIO.kurallar.zaman_asimi_mesaji,
+  };
+}
+
+export function getKarakter(kisiId: string): { ad: string; gorev: string; tanim?: string } {
+  const k = (SCENARIO as any).karakterler?.[kisiId];
+  if (k && k.ad) {
+    return {
+      ad: k.ad,
+      gorev: k.gorev || (SCENARIO as any).kisiler?.[kisiId] || 'EKİP ÜYESİ',
+      tanim: k.tanim || '',
+    };
+  }
+  return {
+    ad: (SCENARIO as any).kisiler?.[kisiId] || kisiId,
+    gorev: 'EKİP ÜYESİ',
+    tanim: '',
   };
 }

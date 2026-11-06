@@ -8,18 +8,36 @@ interface Props {
     rol: Rol;
     hedef: Hedef;
     sayacAcik: boolean;
+    isVeriMode?: boolean;
   }) => void;
   onOpenEval: () => void;
-  seedParam?: string | null;
+  isVeriMode?: boolean;
 }
 
-export const IntroScreen: React.FC<Props> = ({ onStart, onOpenEval, seedParam }) => {
+export const IntroScreen: React.FC<Props> = ({ onStart, onOpenEval, isVeriMode = false }) => {
   const [seviye, setSeviye] = useState<Seviye>('Yeni başladım');
-  const [rolSecimi, setRolSecimi] = useState<'backend' | 'lider' | 'farketmez'>('backend');
+  const [rolSecimi, setRolSecimi] = useState<'backend' | 'lider'>('backend');
   const [hedef, setHedef] = useState<Hedef>('Öğrenmek');
   const [sayacAcik, setSayacAcik] = useState<boolean>(false);
+  const [veriKatil, setVeriKatil] = useState<boolean>(Boolean(isVeriMode));
+  const [veriKabul, setVeriKabul] = useState<boolean>(false);
   const [versionClickCount, setVersionClickCount] = useState<number>(0);
   const [isNasilOynanirOpen, setIsNasilOynanirOpen] = useState<boolean>(false);
+  const [hasHafiza, setHasHafiza] = useState<boolean>(() => {
+    if (isVeriMode) return false;
+    try {
+      return Boolean(localStorage.getItem('seprimer_hafiza'));
+    } catch (e) {
+      return false;
+    }
+  });
+
+  const handleClearHafiza = () => {
+    try {
+      localStorage.removeItem('seprimer_hafiza');
+    } catch (e) {}
+    setHasHafiza(false);
+  };
 
   const handleSeviyeChange = (newSeviye: Seviye) => {
     setSeviye(newSeviye);
@@ -38,27 +56,14 @@ export const IntroScreen: React.FC<Props> = ({ onStart, onOpenEval, seedParam })
   };
 
   const handleStart = () => {
-    let resolvedRol: Rol;
-    if (rolSecimi === 'farketmez') {
-      if (seedParam) {
-        // Deterministic pseudo-random seed
-        let num = 0;
-        for (let i = 0; i < seedParam.length; i++) {
-          num = (num * 31 + seedParam.charCodeAt(i)) >>> 0;
-        }
-        resolvedRol = num % 2 === 0 ? 'backend' : 'lider';
-      } else {
-        resolvedRol = Math.random() < 0.5 ? 'backend' : 'lider';
-      }
-    } else {
-      resolvedRol = rolSecimi;
-    }
+    if (veriKatil && !veriKabul) return;
 
     onStart({
       seviye,
-      rol: resolvedRol,
+      rol: rolSecimi,
       hedef,
       sayacAcik,
+      isVeriMode: Boolean(isVeriMode || (veriKatil && veriKabul)),
     });
   };
 
@@ -98,7 +103,7 @@ export const IntroScreen: React.FC<Props> = ({ onStart, onOpenEval, seedParam })
             onClick={() => setIsNasilOynanirOpen(!isNasilOynanirOpen)}
             className="w-full flex items-center justify-between text-left font-mono-code text-[12px] font-semibold text-[var(--tukenmez)] hover:underline cursor-pointer"
           >
-            <span>[?] Nasıl oynanır?</span>
+            <span>Nasıl oynanır?</span>
             <span className="text-[12px]">{isNasilOynanirOpen ? '▲ Kapat' : '▼ Aç'}</span>
           </button>
           {isNasilOynanirOpen && (
@@ -248,35 +253,6 @@ export const IntroScreen: React.FC<Props> = ({ onStart, onOpenEval, seedParam })
                 </span>
               </div>
             </button>
-
-            <button
-              type="button"
-              data-testid="secim-rol-farketmez"
-              onClick={() => setRolSecimi('farketmez')}
-              className={`w-full text-left p-3 border rounded-[4px] min-h-[48px] flex items-center gap-3 cursor-pointer ${
-                rolSecimi === 'farketmez'
-                  ? 'border-[var(--tukenmez)] bg-[var(--kagit)]'
-                  : 'border-[var(--cizgi)] bg-[var(--fis)] hover:border-[var(--soluk)]'
-              }`}
-            >
-              <div
-                className={`w-5 h-5 rounded-[2px] border flex items-center justify-center shrink-0 ${
-                  rolSecimi === 'farketmez'
-                    ? 'border-[var(--tukenmez)] bg-[var(--tukenmez)] text-white'
-                    : 'border-[var(--cizgi)] bg-white'
-                }`}
-              >
-                {rolSecimi === 'farketmez' && <span className="text-[12px]">✓</span>}
-              </div>
-              <div>
-                <span className="text-[15px] font-medium text-[var(--murekkep)] block">
-                  Rol fark etmez
-                </span>
-                <span className="text-[12px] text-[var(--soluk)]">
-                  İki rolden biri rastgele atanır
-                </span>
-              </div>
-            </button>
           </div>
         </div>
 
@@ -400,12 +376,72 @@ export const IntroScreen: React.FC<Props> = ({ onStart, onOpenEval, seedParam })
           </label>
         </div>
 
+        {/* Veri Toplama Katılımı & Notu */}
+        <div className="mb-5">
+          <label className="flex items-center gap-2 cursor-pointer text-[13px] text-[var(--murekkep)] select-none">
+            <input
+              type="checkbox"
+              data-testid="veri-katil"
+              checked={veriKatil}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                setVeriKatil(checked);
+                if (!checked) {
+                  setVeriKabul(false);
+                }
+              }}
+              className="w-4 h-4 text-[var(--tukenmez)] border-[var(--cizgi)] rounded-[2px]"
+            />
+            <span className="font-medium">Veri toplamaya katıl</span>
+          </label>
+
+          {veriKatil && (
+            <div className="mt-3 p-3.5 bg-[var(--fis)] border border-dashed border-[var(--cizgi)] rounded-[4px]">
+              <span className="font-mono-code text-[12px] font-bold text-[var(--soluk)] uppercase tracking-wider block mb-1">
+                VERİ TOPLAMA MODU
+              </span>
+              <p className="text-[13px] text-[var(--murekkep)] mb-2.5 leading-relaxed">
+                Kararların ve süreler kaydedilir; ad, e-posta, cihaz veya konum kaydedilmez. Veriyi oyun sonunda sen indirip göndereceksin.
+              </p>
+              <label className="flex items-center gap-2 cursor-pointer text-[13px] text-[var(--murekkep)] select-none">
+                <input
+                  type="checkbox"
+                  data-testid="veri-onay"
+                  checked={veriKabul}
+                  onChange={(e) => setVeriKabul(e.target.checked)}
+                  className="w-4 h-4 text-[var(--tukenmez)] border-[var(--cizgi)] rounded-[2px]"
+                />
+                <span>Kabul ediyorum</span>
+              </label>
+            </div>
+          )}
+        </div>
+
+        {/* Ekibin Hafızasını Sil Düğmesi (spec §15.2, Prompt 3 madde 10) */}
+        {hasHafiza && !isVeriMode && !veriKatil && (
+          <div className="mb-3 text-center">
+            <button
+              type="button"
+              data-testid="dugme-hafiza-sil"
+              onClick={handleClearHafiza}
+              className="text-[12px] font-mono-code text-[var(--soluk)] hover:text-[var(--damga)] underline cursor-pointer"
+            >
+              Ekibin hafızasını sil
+            </button>
+          </div>
+        )}
+
         {/* Başla Düğmesi */}
         <button
           type="button"
           data-testid="dugme-basla"
           onClick={handleStart}
-          className="w-full h-12 bg-[var(--tukenmez)] hover:opacity-95 text-white font-medium rounded-[4px] cursor-pointer text-[16px] tracking-wide"
+          disabled={veriKatil && !veriKabul}
+          className={`w-full h-12 font-medium rounded-[4px] text-[16px] tracking-wide transition-opacity ${
+            veriKatil && !veriKabul
+              ? 'bg-[var(--cizgi)] text-[var(--soluk)] cursor-not-allowed'
+              : 'bg-[var(--tukenmez)] hover:opacity-95 text-white cursor-pointer'
+          }`}
         >
           Olay Defterini Aç
         </button>
@@ -421,9 +457,10 @@ export const IntroScreen: React.FC<Props> = ({ onStart, onOpenEval, seedParam })
           className="cursor-pointer hover:text-[var(--murekkep)] underline"
           title="Tutor test / eval modu için 5 kez tıkla"
         >
-          v1.0
+          v2.0
         </button>
       </div>
     </div>
   );
 };
+

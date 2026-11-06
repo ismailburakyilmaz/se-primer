@@ -1,13 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { Seviye, Rol, Hedef, Eylem, Sahne, KararKaydi, Mesaj } from './types/game.js';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Seviye, Rol, Hedef, Eylem, KararKaydi, Mesaj, LogSatiri } from './types/game.js';
 import { SCENARIO, getSahne, processDecision, processTimeout, StepResult, getCoordLabel } from './utils/engine.js';
 import { IntroScreen } from './screens/IntroScreen.js';
 import { SceneScreen } from './screens/SceneScreen.js';
 import { ResultScreen } from './screens/ResultScreen.js';
 import { EvalScreen } from './screens/EvalScreen.js';
 import { WhatHappenedModal } from './components/WhatHappenedModal.js';
+import { StampNotificationBar } from './components/StampNotificationBar.js';
+import { OturumSatiri, generateSessionId } from './utils/iz.js';
+import { PariteScreen } from './screens/PariteScreen.js';
+import {
+  initModel,
+  predictKotuSonProb,
+  computeYonetmenModu,
+  getFixedModelProb,
+  getModelDurum,
+  onModelDurum,
+  ModelDurum,
+  MODEL_SURUMU_TAG,
+} from './utils/modelService.js';
+import { formatClock } from './utils/engine.js';
 
-const STORAGE_KEY = 'se_primer_session_v1';
+type YonetmenModu = 'olagan' | 'destek' | 'baski';
+
+const STORAGE_KEY = 'se_primer_session_v2';
 
 function saveSessionState(state: any) {
   try {
@@ -26,11 +42,19 @@ function clearSessionState() {
 }
 
 export const App: React.FC = () => {
-  const [screen, setScreen] = useState<'intro' | 'scene' | 'result' | 'eval'>('intro');
+  const [screen, setScreen] = useState<'intro' | 'scene' | 'result' | 'eval' | 'parite'>('intro');
+
+  // v2 Olay Yönetmeni (spec §13.5)
+  const [yonetmenModu, setYonetmenModu] = useState<YonetmenModu>('olagan');
+  const [yonetmenIzi, setYonetmenIzi] = useState<{ sahneId: string; mod: 'destek' | 'baski'; saat: string }[]>([]);
+  const sonrakiModRef = useRef<Promise<YonetmenModu> | null>(null);
+  const [modelDurum, setModelDurum] = useState<ModelDurum>(getModelDurum());
 
   // URL query params
   const [isMock, setIsMock] = useState<boolean>(false);
-  const [seedParam, setSeedParam] = useState<string | null>(null);
+  const [isVeriMode, setIsVeriMode] = useState<boolean>(false);
+  const [isGelistirici, setIsGelistirici] = useState<boolean>(false);
+  const [modelParam, setModelParam] = useState<string>('');
 
   // Player configuration
   const [seviye, setSeviye] = useState<Seviye>('Yeni başladım');
@@ -49,6 +73,19 @@ export const App: React.FC = () => {
   const [bayraklar, setBayraklar] = useState<Record<string, boolean>>({});
   const [kararlar, setKararlar] = useState<KararKaydi[]>([]);
   const [ekstraMesajlar, setEkstraMesajlar] = useState<Mesaj[]>([]);
+
+  // v2 additions: visited scenes, marked logs, cold message
+  const [visitedSahneIds, setVisitedSahneIds] = useState<string[]>(['S1']);
+  const [markedLogs, setMarkedLogs] = useState<LogSatiri[]>([]);
+  const [isColdMessagePending, setIsColdMessagePending] = useState<boolean>(false);
+
+  // v2 Session trace state (Requirement F.5, F.6, G.7, G.8)
+  const [oturumId, setOturumId] = useState<string>(() => generateSessionId());
+  const [oturumRows, setOturumRows] = useState<OturumSatiri[]>([]);
+  const [terimToplam, setTerimToplam] = useState<number>(0);
+  const [tutorToplam, setTutorToplam] = useState<number>(0);
+  const [israrToplam, setIsrarToplam] = useState<number>(0);
+  const [sorunluKararToplam, setSorunluKararToplam] = useState<number>(0);
 
   // End Game State
   const [endGame, setEndGame] = useState<'alindi' | 'alinamadi' | 'ihlal' | null>(null);
@@ -79,6 +116,14 @@ export const App: React.FC = () => {
     risk?: boolean;
     koordinasyon?: boolean;
   }>({});
+  const [previousGauges, setPreviousGauges] = useState<{
+    sureDk: number;
+    etki: number;
+    risk: number;
+    koordinasyon: number;
+  } | null>(null);
+  const [denenenEylemlerBuSahne, setDenenenEylemlerBuSahne] = useState<string[]>([]);
+  const [denemeSayisi, setDenemeSayisi] = useState<number>(1);
 
   // Read URL query parameters and sessionStorage on load
   useEffect(() => {
@@ -86,12 +131,22 @@ export const App: React.FC = () => {
     if (params.get('mock') === '1') {
       setIsMock(true);
     }
-    const seed = params.get('seed');
-    if (seed) {
-      setSeedParam(seed);
+    if (params.get('veri') === '1') {
+      setIsVeriMode(true);
+    }
+    if (params.get('gelistirici') === '1') {
+      setIsGelistirici(true);
+    }
+    const model = params.get('model');
+    if (model) {
+      setModelParam(model);
     }
     if (params.get('eval') === '1') {
       setScreen('eval');
+      return;
+    }
+    if (params.get('parite') === '1') {
+      setScreen('parite');
       return;
     }
 
@@ -115,6 +170,18 @@ export const App: React.FC = () => {
           setBayraklar(parsed.bayraklar || {});
           setKararlar(parsed.kararlar || []);
           setEkstraMesajlar(parsed.ekstraMesajlar || []);
+          setVisitedSahneIds(parsed.visitedSahneIds || ['S1']);
+          setMarkedLogs(parsed.markedLogs || []);
+          setIsColdMessagePending(Boolean(parsed.isColdMessagePending));
+          setOturumId(parsed.oturumId || generateSessionId());
+          setOturumRows(parsed.oturumRows || []);
+          setTerimToplam(parsed.terimToplam || 0);
+          setTutorToplam(parsed.tutorToplam || 0);
+          setIsrarToplam(parsed.israrToplam || 0);
+          setSorunluKararToplam(parsed.sorunluKararToplam || 0);
+          if (typeof parsed.isVeriMode === 'boolean') {
+            setIsVeriMode(parsed.isVeriMode);
+          }
           setEndGame(parsed.endGame || null);
           setEndReasons(parsed.endReasons || []);
         }
@@ -124,16 +191,79 @@ export const App: React.FC = () => {
     }
   }, []);
 
+  // Model bir kez yüklenir; durumu giriş ekranında gösterilir
+  useEffect(() => {
+    const kapat = onModelDurum(setModelDurum);
+    initModel();
+    return kapat;
+  }, []);
+
+  // Bir karar satırı için modeli çalıştırır, satırı p_golge ile günceller, sonraki sahnenin modunu döndürür
+  const modelCalistir = async (row: OturumSatiri, veriModu: boolean): Promise<YonetmenModu> => {
+    const p = await predictKotuSonProb(row as any);
+    const mod = computeYonetmenModu(p, veriModu);
+    const sabit = getFixedModelProb() !== null;
+    console.info(`[yonetmen] p=${p === null ? 'yok' : p.toFixed(6)} mod=${mod} veriModu=${veriModu}`);
+    setOturumRows((prev) =>
+      prev.map((r) =>
+        r.oturum === row.oturum && r.karar_no === row.karar_no
+          ? {
+              ...r,
+              p_golge: p === null ? '' : p.toFixed(6),
+              model_surumu: p === null ? '' : sabit ? 'sabit' : MODEL_SURUMU_TAG,
+            }
+          : r
+      )
+    );
+    return mod;
+  };
+
+  // Sonraki sahne açılırken bekleyen modu uygular
+  const sonrakiModuUygula = (sahneId: string, yeniSureDk: number) => {
+    const bekleyen = sonrakiModRef.current;
+    sonrakiModRef.current = null;
+    setYonetmenModu('olagan');
+    if (!bekleyen) return;
+    bekleyen.then((mod) => {
+      setYonetmenModu(mod);
+      if (mod !== 'olagan') {
+        setYonetmenIzi((prev) => [...prev, { sahneId, mod, saat: formatClock(yeniSureDk) }]);
+      }
+    });
+  };
+
+  // Accumulated logs across visited scenes (spec §12.2)
+  const allAccumulatedLogs = useMemo(() => {
+    const list: LogSatiri[] = [];
+    const seen = new Set<string>();
+    for (const sId of visitedSahneIds) {
+      const s = getSahne(sId);
+      if (s && s.loglar) {
+        for (const log of s.loglar) {
+          if (!seen.has(log.id)) {
+            seen.add(log.id);
+            list.push(log);
+          }
+        }
+      }
+    }
+    return list;
+  }, [visitedSahneIds]);
+
   const handleStartGame = (params: {
     seviye: Seviye;
     rol: Rol;
     hedef: Hedef;
     sayacAcik: boolean;
+    isVeriMode?: boolean;
   }) => {
     setSeviye(params.seviye);
     setRol(params.rol);
     setHedef(params.hedef);
     setSayacAcik(params.sayacAcik);
+    if (typeof params.isVeriMode === 'boolean') {
+      setIsVeriMode(params.isVeriMode);
+    }
 
     // Reset initial game state from SCENARIO
     const initialSahne = SCENARIO.baslangic.ilk_sahne || 'S1';
@@ -142,6 +272,8 @@ export const App: React.FC = () => {
     const initialRisk = SCENARIO.baslangic.risk || 10;
     const initialCoord = SCENARIO.baslangic.koordinasyon || 1;
 
+    const newOturumId = generateSessionId();
+
     setCurrentSahneId(initialSahne);
     setZiyaret(0);
     setSureDk(initialSure);
@@ -149,9 +281,47 @@ export const App: React.FC = () => {
     setMaxEtki(initialEtki);
     setRisk(initialRisk);
     setKoordinasyon(initialCoord);
+    let initialEkstraMesajlar: Mesaj[] = [];
+    if (!params.isVeriMode) {
+      try {
+        const memStr = localStorage.getItem('seprimer_hafiza');
+        if (memStr) {
+          const mem = JSON.parse(memStr);
+          const hMesajlar = (SCENARIO as any).hafiza_mesajlari || {};
+          let hKey = '';
+          if (mem.son === 'ihlal') {
+            hKey = 'onceki_ihlal';
+          } else if (mem.ilk_eylem === 'S1_geri_don') {
+            hKey = 'onceki_geri_don';
+          } else if (mem.son === 'alinamadi') {
+            hKey = 'onceki_alinamadi';
+          } else if (mem.son === 'alindi') {
+            hKey = 'onceki_alindi';
+          }
+          if (hKey && hMesajlar[hKey]) {
+            initialEkstraMesajlar = [
+              {
+                kisi: hMesajlar[hKey].kisi,
+                metin: hMesajlar[hKey].metin,
+              },
+            ];
+          }
+        }
+      } catch (e) {}
+    }
+
     setBayraklar({});
     setKararlar([]);
-    setEkstraMesajlar([]);
+    setEkstraMesajlar(initialEkstraMesajlar);
+    setVisitedSahneIds([initialSahne]);
+    setMarkedLogs([]);
+    setIsColdMessagePending(false);
+    setOturumId(newOturumId);
+    setOturumRows([]);
+    setTerimToplam(0);
+    setTutorToplam(0);
+    setIsrarToplam(0);
+    setSorunluKararToplam(0);
     setEndGame(null);
     setEndReasons([]);
     setLastChosenEylem(null);
@@ -162,12 +332,20 @@ export const App: React.FC = () => {
     setGaugeChangesText('');
     setPendingChangedGauges({});
     setGaugeHighlights({});
+    setDenenenEylemlerBuSahne([]);
+    setDenemeSayisi(1);
+    setYonetmenModu('olagan');
+    setYonetmenIzi([]);
+    sonrakiModRef.current = null;
 
     clearSessionState();
     setScreen('scene');
   };
 
-  const handleSelectEylem = (eylem: Eylem) => {
+  const handleSelectEylem = (
+    eylem: Eylem,
+    stats: { kararSuresiSn: number; konsolArama: number; bulunanAnlamli: number }
+  ) => {
     const currentSahne = getSahne(currentSahneId) || SCENARIO.sahneler[0];
     const step = processDecision({
       currentSahne,
@@ -182,6 +360,38 @@ export const App: React.FC = () => {
       bayraklar,
       decisionCount: kararlar.length,
     });
+
+    const isSorunlu = ['geciktiren', 'tehlikeli', 'kirmizi_cizgi'].includes(eylem.tur);
+    const newSorunluToplam = sorunluKararToplam + (isSorunlu ? 1 : 0);
+    setSorunluKararToplam(newSorunluToplam);
+
+    // Record trace row (spec §13.2 / SOZLUK.md)
+    const traceRow: OturumSatiri = {
+      oturum: oturumId,
+      kaynak: 'gercek',
+      oyuncu_tipi: 'oyuncu',
+      karar_no: kararlar.length + 1,
+      sahne_id: currentSahneId,
+      eylem_id: eylem.id,
+      seviye: seviye === 'Yeni başladım' ? 0 : 1,
+      rol: rol === 'backend' ? 0 : 1,
+      karar_suresi_sn: stats.kararSuresiSn,
+      konsol_arama: stats.konsolArama,
+      bulunan_anlamli: stats.bulunanAnlamli,
+      terim_toplam: terimToplam,
+      tutor_toplam: tutorToplam,
+      israr_toplam: israrToplam,
+      sorunlu_karar_toplam: newSorunluToplam,
+      kalan_sure_dk: Math.max(0, 100 - step.sureDk),
+      son: '',
+      kotu_son: '',
+      yonetmen_modu: yonetmenModu,
+      model_surumu: '',
+      p_golge: '',
+    };
+    setOturumRows((prev) => [...prev, traceRow]);
+    // Model, "Ne oldu" paneli açıkken çalışır; sonuç bir sonraki sahnenin modunu belirler (spec §13.1)
+    sonrakiModRef.current = modelCalistir(traceRow, isVeriMode);
 
     const eylemMetni = rol === 'backend' ? eylem.metin_backend : eylem.metin_lider;
     const nedenOlduMetni = (hedef === 'Öğrenmek' && eylem.neden_oldu_uzun) || eylem.neden_oldu;
@@ -223,6 +433,19 @@ export const App: React.FC = () => {
       changed.koordinasyon = true;
     }
 
+    const unreliableMsg = (currentSahne?.mesajlar as any[])?.find((m: any) => m.guvenilmez);
+    if (unreliableMsg && eylem.tur === 'geciktiren') {
+      const isCelisenMarked = markedLogs.some((l) => l.id === unreliableMsg.celisen_log);
+      if (!isCelisenMarked) {
+        const gKarakter = (SCENARIO as any).karakterler?.[unreliableMsg.kisi] || { ad: unreliableMsg.kisi };
+        step.kararKaydi.guvenilmezMesajUyarisi = {
+          soru: 'Bu bilgi kimden geldi, doğrulandı mı?',
+          sahibi: gKarakter.ad || unreliableMsg.kisi,
+          metin: unreliableMsg.metin,
+        };
+      }
+    }
+
     setGaugeChangesText(diffParts.join(' · '));
     setPendingChangedGauges(changed);
     setPendingStep(step);
@@ -230,10 +453,28 @@ export const App: React.FC = () => {
     setIsWhatHappenedOpen(true);
   };
 
-  const handleContinueAfterWhatHappened = () => {
+  const handleContinueAfterWhatHappened = (mulakatCümlesi?: string, savunmaMetni?: string) => {
     if (!pendingStep) return;
 
+    if (mulakatCümlesi && pendingStep.kararKaydi) {
+      pendingStep.kararKaydi.mulakatMetni = mulakatCümlesi;
+    }
+    if (savunmaMetni && pendingStep.kararKaydi) {
+      pendingStep.kararKaydi.savunmaMetni = savunmaMetni;
+    }
+
     setIsWhatHappenedOpen(false);
+
+    // Ink strike-through previous gauges:
+    setPreviousGauges({
+      sureDk,
+      etki,
+      risk,
+      koordinasyon,
+    });
+    setTimeout(() => {
+      setPreviousGauges(null);
+    }, 1500);
 
     // Apply calculated step
     const newSureDk = pendingStep.sureDk;
@@ -249,6 +490,12 @@ export const App: React.FC = () => {
     const nextEndReasons = pendingStep.endReasons;
     const nextZiyaret = ziyaret + 1;
 
+    // Check if team trust dropped -> trigger cold message for next scene
+    let nextColdPending = isColdMessagePending;
+    if (newCoord < koordinasyon) {
+      nextColdPending = true;
+    }
+
     setSureDk(newSureDk);
     setEtki(newEtki);
     setMaxEtki(newMaxEtki);
@@ -257,25 +504,82 @@ export const App: React.FC = () => {
     setBayraklar(newBayraklar);
     setKararlar(newKararlar);
     setEkstraMesajlar(newEkstraMesajlar);
+    setIsColdMessagePending(nextColdPending);
 
-    // 1 saniyelik fosfor vurgusu tetikle (Requirement 6)
-    if (pendingChangedGauges) {
-      setGaugeHighlights(pendingChangedGauges);
-      setTimeout(() => {
-        setGaugeHighlights({});
-      }, 1000);
-    }
+    // Update visited scenes
+    const nextVisited = visitedSahneIds.includes(nextSahneId)
+      ? visitedSahneIds
+      : [...visitedSahneIds, nextSahneId];
+    setVisitedSahneIds(nextVisited);
 
     if (nextEndGame) {
       setEndGame(nextEndGame);
       setEndReasons(nextEndReasons);
+
+      // Memory save (spec §15.2, Prompt 3 madde 10)
+      if (!isVeriMode) {
+        try {
+          const profileRules = (SCENARIO as any).profil_kurallari || {};
+          const searchCount = oturumRows.filter((r) => Number(r.konsol_arama) > 0).length;
+          const isKanitci = newKararlar.length > 0 && searchCount / newKararlar.length >= 0.5;
+          const fastNoSearchCount = oturumRows.filter((r) => Number(r.karar_suresi_sn) < 10 && Number(r.konsol_arama) === 0).length;
+          const isAceleci = newKararlar.length > 0 && fastNoSearchCount / newKararlar.length >= 0.5;
+          const isOtorite = newKararlar.some((k) => k.mudurOnerisi);
+          const isYetki = newKararlar.some((k) => k.yetkiDisi);
+          const isVeri = newKararlar.some((k) => k.veriKorumayan);
+          const matches: Record<string, boolean> = {
+            veriyi_hafife_alan: isVeri,
+            yetki_zorlayan: isYetki,
+            otoriteye_uyan: isOtorite,
+            aceleci: isAceleci,
+            kanitci: isKanitci,
+            dengeli: true,
+          };
+          const order = profileRules.oncelik || ['veriyi_hafife_alan', 'yetki_zorlayan', 'otoriteye_uyan', 'aceleci', 'kanitci', 'dengeli'];
+          let finalKey = 'dengeli';
+          for (const key of order) {
+            if (matches[key]) {
+              finalKey = key;
+              break;
+            }
+          }
+          const memory = {
+            son: nextEndGame,
+            karar_tarzi: finalKey,
+            ilk_eylem: newKararlar[0]?.eylemId || '',
+          };
+          localStorage.setItem('seprimer_hafiza', JSON.stringify(memory));
+        } catch (e) {}
+      }
+
+      // Seal all trace rows with final outcome
+      setOturumRows((prev) =>
+        prev.map((r) => ({
+          ...r,
+          son: nextEndGame,
+          kotu_son: nextEndGame === 'alindi' ? 0 : 1,
+        }))
+      );
       setScreen('result');
       clearSessionState();
     } else {
+      if (nextSahneId === currentSahneId) {
+        const chosenEylemId = pendingStep.kararKaydi?.eylemId;
+        if (chosenEylemId) {
+          setDenenenEylemlerBuSahne((prev) =>
+            prev.includes(chosenEylemId) ? prev : [...prev, chosenEylemId]
+          );
+        }
+        setDenemeSayisi((prev) => prev + 1);
+      } else {
+        setDenenenEylemlerBuSahne([]);
+        setDenemeSayisi(1);
+      }
+
       setCurrentSahneId(nextSahneId);
       setZiyaret(nextZiyaret);
+      sonrakiModuUygula(nextSahneId, newSureDk);
 
-      // SessionStorage kaydet (Requirement B2)
       saveSessionState({
         screen: 'scene',
         seviye,
@@ -292,6 +596,16 @@ export const App: React.FC = () => {
         bayraklar: newBayraklar,
         kararlar: newKararlar,
         ekstraMesajlar: newEkstraMesajlar,
+        visitedSahneIds: nextVisited,
+        markedLogs,
+        isColdMessagePending: nextColdPending,
+        oturumId,
+        oturumRows,
+        terimToplam,
+        tutorToplam,
+        israrToplam,
+        sorunluKararToplam,
+        isVeriMode,
         endGame: null,
         endReasons: [],
       });
@@ -318,6 +632,11 @@ export const App: React.FC = () => {
     const nextEndReasons = pendingStep.endReasons;
     const nextZiyaret = ziyaret + 1;
 
+    let nextColdPending = isColdMessagePending;
+    if (newCoord < koordinasyon) {
+      nextColdPending = true;
+    }
+
     setSureDk(newSureDk);
     setEtki(newEtki);
     setMaxEtki(newMaxEtki);
@@ -326,23 +645,53 @@ export const App: React.FC = () => {
     setBayraklar(newBayraklar);
     setKararlar(newKararlar);
     setEkstraMesajlar(newEkstraMesajlar);
+    setIsColdMessagePending(nextColdPending);
 
-    if (pendingChangedGauges) {
-      setGaugeHighlights(pendingChangedGauges);
-      setTimeout(() => {
-        setGaugeHighlights({});
-      }, 1000);
-    }
+    const nextVisited = visitedSahneIds.includes(nextSahneId)
+      ? visitedSahneIds
+      : [...visitedSahneIds, nextSahneId];
+    setVisitedSahneIds(nextVisited);
+
+    setPreviousGauges({
+      sureDk,
+      etki,
+      risk,
+      koordinasyon,
+    });
+    setTimeout(() => {
+      setPreviousGauges(null);
+    }, 1500);
 
     if (nextEndGame) {
       setEndGame(nextEndGame);
       setEndReasons(nextEndReasons);
+      setOturumRows((prev) =>
+        prev.map((r) => ({
+          ...r,
+          son: nextEndGame,
+          kotu_son: nextEndGame === 'alindi' ? 0 : 1,
+        }))
+      );
       setScreen('result');
       clearSessionState();
     } else {
+      if (nextSahneId === currentSahneId) {
+        const chosenEylemId = pendingStep.kararKaydi?.eylemId;
+        if (chosenEylemId) {
+          setDenenenEylemlerBuSahne((prev) =>
+            prev.includes(chosenEylemId) ? prev : [...prev, chosenEylemId]
+          );
+        }
+        setDenemeSayisi((prev) => prev + 1);
+      } else {
+        setDenenenEylemlerBuSahne([]);
+        setDenemeSayisi(1);
+      }
+
       setCurrentSahneId(nextSahneId);
       setOpenTutorOfferDirectly(true);
       setZiyaret(nextZiyaret);
+      sonrakiModuUygula(nextSahneId, newSureDk);
 
       saveSessionState({
         screen: 'scene',
@@ -360,6 +709,15 @@ export const App: React.FC = () => {
         bayraklar: newBayraklar,
         kararlar: newKararlar,
         ekstraMesajlar: newEkstraMesajlar,
+        visitedSahneIds: nextVisited,
+        markedLogs,
+        isColdMessagePending: nextColdPending,
+        oturumId,
+        oturumRows,
+        terimToplam,
+        tutorToplam,
+        israrToplam,
+        sorunluKararToplam,
         endGame: null,
         endReasons: [],
       });
@@ -368,7 +726,11 @@ export const App: React.FC = () => {
     setPendingStep(null);
   };
 
-  const handleTimeout = () => {
+  const handleTimeout = (stats: {
+    kararSuresiSn: number;
+    konsolArama: number;
+    bulunanAnlamli: number;
+  }) => {
     const currentSahne = getSahne(currentSahneId) || SCENARIO.sahneler[0];
     const timeoutStep = processTimeout({
       currentSahne,
@@ -381,6 +743,36 @@ export const App: React.FC = () => {
       decisionCount: kararlar.length,
     });
 
+    const newSorunluToplam = sorunluKararToplam + 1;
+    setSorunluKararToplam(newSorunluToplam);
+
+    const traceRow: OturumSatiri = {
+      oturum: oturumId,
+      kaynak: 'gercek',
+      oyuncu_tipi: 'oyuncu',
+      karar_no: kararlar.length + 1,
+      sahne_id: currentSahneId,
+      eylem_id: 'ZAMAN_ASIMI',
+      seviye: seviye === 'Yeni başladım' ? 0 : 1,
+      rol: rol === 'backend' ? 0 : 1,
+      karar_suresi_sn: 60,
+      konsol_arama: stats.konsolArama,
+      bulunan_anlamli: stats.bulunanAnlamli,
+      terim_toplam: terimToplam,
+      tutor_toplam: tutorToplam,
+      israr_toplam: israrToplam,
+      sorunlu_karar_toplam: newSorunluToplam,
+      kalan_sure_dk: Math.max(0, 100 - timeoutStep.sureDk),
+      son: timeoutStep.endGame || '',
+      kotu_son: timeoutStep.endGame ? (timeoutStep.endGame === 'alindi' ? 0 : 1) : '',
+      yonetmen_modu: yonetmenModu,
+      model_surumu: '',
+      p_golge: '',
+    };
+    setOturumRows((prev) => [...prev, traceRow]);
+    // Zaman aşımında aynı sahne sürer; tahmin kaydedilir, mod bir sonraki sahne geçişinde yeni kararla belirlenir
+    modelCalistir(traceRow, isVeriMode);
+
     const newSureDk = timeoutStep.sureDk;
     const newEtki = timeoutStep.etki;
     const newMaxEtki = timeoutStep.maxEtki;
@@ -389,6 +781,16 @@ export const App: React.FC = () => {
     const newBayraklar = timeoutStep.bayraklar;
     const newKararlar = [...kararlar, timeoutStep.kararKaydi];
     const newEkstraMesajlar = timeoutStep.ekMesaj ? [timeoutStep.ekMesaj] : ekstraMesajlar;
+
+    setPreviousGauges({
+      sureDk,
+      etki,
+      risk,
+      koordinasyon,
+    });
+    setTimeout(() => {
+      setPreviousGauges(null);
+    }, 1500);
 
     setSureDk(newSureDk);
     setEtki(newEtki);
@@ -402,9 +804,29 @@ export const App: React.FC = () => {
     if (timeoutStep.endGame) {
       setEndGame(timeoutStep.endGame);
       setEndReasons(timeoutStep.endReasons);
+
+      if (!isVeriMode) {
+        try {
+          const memory = {
+            son: timeoutStep.endGame,
+            karar_tarzi: 'dengeli',
+            ilk_eylem: newKararlar[0]?.eylemId || '',
+          };
+          localStorage.setItem('seprimer_hafiza', JSON.stringify(memory));
+        } catch (e) {}
+      }
+
+      setOturumRows((prev) =>
+        prev.map((r) => ({
+          ...r,
+          son: timeoutStep.endGame!,
+          kotu_son: timeoutStep.endGame === 'alindi' ? 0 : 1,
+        }))
+      );
       setScreen('result');
       clearSessionState();
     } else {
+      setDenemeSayisi((prev) => prev + 1);
       saveSessionState({
         screen: 'scene',
         seviye,
@@ -421,9 +843,66 @@ export const App: React.FC = () => {
         bayraklar: newBayraklar,
         kararlar: newKararlar,
         ekstraMesajlar: newEkstraMesajlar,
+        visitedSahneIds,
+        markedLogs,
+        isColdMessagePending,
+        oturumId,
+        oturumRows,
+        terimToplam,
+        tutorToplam,
+        israrToplam,
+        sorunluKararToplam: newSorunluToplam,
         endGame: null,
         endReasons: [],
       });
+    }
+  };
+
+  const handleMarkLog = (log: LogSatiri) => {
+    setMarkedLogs((prev) => {
+      if (prev.some((l) => l.id === log.id)) return prev;
+      const updated = [...prev, log];
+      saveSessionState({
+        screen: 'scene',
+        seviye,
+        rol,
+        hedef,
+        sayacAcik,
+        currentSahneId,
+        ziyaret,
+        sureDk,
+        etki,
+        maxEtki,
+        risk,
+        koordinasyon,
+        bayraklar,
+        kararlar,
+        ekstraMesajlar,
+        visitedSahneIds,
+        markedLogs: updated,
+        isColdMessagePending,
+        oturumId,
+        oturumRows,
+        terimToplam,
+        tutorToplam,
+        israrToplam,
+        sorunluKararToplam,
+        isVeriMode,
+        endGame: null,
+        endReasons: [],
+      });
+      return updated;
+    });
+  };
+
+  const handleTermOpened = () => {
+    setTerimToplam((prev) => prev + 1);
+  };
+
+  const handleTutorMessageSent = (isIsrar: boolean) => {
+    setTutorToplam((prev) => prev + 1);
+    if (isIsrar) {
+      setIsrarToplam((prev) => prev + 1);
     }
   };
 
@@ -453,11 +932,13 @@ export const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[var(--kagit)] text-[var(--murekkep)] font-sans-body">
+      <StampNotificationBar />
+
       {screen === 'intro' && (
         <IntroScreen
           onStart={handleStartGame}
           onOpenEval={() => setScreen('eval')}
-          seedParam={seedParam}
+          isVeriMode={isVeriMode}
         />
       )}
 
@@ -475,13 +956,26 @@ export const App: React.FC = () => {
           sayacAcik={sayacAcik}
           oncekiKararlarMetinleri={oncekiKararlarMetinleri}
           ekstraMesajlar={ekstraMesajlar}
+          sogukMesaj={isColdMessagePending ? ((SCENARIO as any).soguk_mesaj || null) : null}
+          allAccumulatedLogs={allAccumulatedLogs}
+          markedLogs={markedLogs}
+          onMarkLog={handleMarkLog}
           isMock={isMock}
+          oturumId={oturumId}
           isWhatHappenedOpen={isWhatHappenedOpen}
+          lastChosenEylem={lastChosenEylem}
+          previousGauges={previousGauges}
           gaugeHighlights={gaugeHighlights}
           lastEvaluatedActionInfo={lastEvaluatedActionInfo}
+          ziyaret={ziyaret}
+          denenenEylemler={denenenEylemlerBuSahne}
+          denemeSayisi={denemeSayisi}
+          yonetmenModu={yonetmenModu}
           onSelectEylem={handleSelectEylem}
           onTimeout={handleTimeout}
           onExitGame={handleExitGame}
+          onTermOpened={handleTermOpened}
+          onTutorMessageSent={handleTutorMessageSent}
           onOpenTutorOfferDirectly={openTutorOfferDirectly}
           onClearTutorOfferDirectly={() => setOpenTutorOfferDirectly(false)}
         />
@@ -499,10 +993,26 @@ export const App: React.FC = () => {
           koordinasyon={koordinasyon}
           hedef={hedef}
           currentRol={rol}
+          isVeriMode={isVeriMode}
+          oturumTrace={oturumRows}
+          oturumId={oturumId}
+          markedLogs={markedLogs}
+          yonetmenIzi={yonetmenIzi}
           onPlayOtherRole={handlePlayOtherRole}
           onRestart={handleRestart}
         />
       )}
+
+      {screen === 'intro' && (
+        <div
+          data-testid="model-durum"
+          className="max-w-xl mx-auto px-6 pb-4 -mt-2 font-mono-code text-[12px] text-[var(--soluk)]"
+        >
+          {modelDurum.mesaj}
+        </div>
+      )}
+
+      {screen === 'parite' && <PariteScreen />}
 
       {screen === 'eval' && (
         <EvalScreen

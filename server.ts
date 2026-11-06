@@ -3,6 +3,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import { AI_MODELS } from './src/config/models';
+import fs from 'fs';
+import { MODEL_URL, CONFIG_URL, MODEL_SURUMU_TAG } from './src/config/model';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -13,6 +15,7 @@ const PORT = Number(process.env.PORT) || 3000;
 app.use(express.json());
 
 const apiKey = process.env.SE_PRIMER_GEMINI_KEY || process.env.GEMINI_API_KEY;
+
 console.log(`[Gemini] API key configured: ${Boolean(apiKey && apiKey.trim())}`);
 
 let ai: GoogleGenAI | null = null;
@@ -35,19 +38,6 @@ const timeoutPromise = <T>(promise: Promise<T>, ms: number, errorMessage: string
     new Promise<T>((_, reject) => setTimeout(() => reject(new Error(errorMessage)), ms)),
   ]);
 };
-
-// 6.1 Anlatıcı Talimatı
-const NARRATOR_SYSTEM_PROMPT = `Sen SE Primer oyununun anlatıcısısın. Sana bir sahnenin sabit gerçekleri, oyuncuya açılmış kanıtlar, önceki kararların özeti ve oyuncunun rolü, seviyesi ve hedefi verilir. Görevin bunları kısa ve canlı bir sahne anlatımına dönüştürmek.
-
-Kurallar:
-1. Yalnızca verilen gerçekleri anlat; yeni teknik bilgi, sayı, kişi veya sistem ekleme.
-2. "gizli" olarak işaretlenmiş bilgiyi anlatma, ima etme.
-3. Seçenekleri yazma, değerlendirme veya sıralama; seçenekler uygulamada ayrıca gösterilir.
-4. Anlatım en fazla 90 kelime olsun ve ikinci tekil şahısla ("sen") yazılsın.
-5. Seviye "Yeni başladım" ise sade, "Deneyimliyim" ise teknik ve kısa yaz. Hedef "Baskı altında karar" ise en fazla 50 kelime yaz. Rolün bakış açısını koru: takım lideri ekibi yönetir, backend geliştirici kodu ve veritabanını inceler.
-6. Karakter mesajı yalnızca verilen kişilerden ve verilen içerikle olabilir; en fazla iki tane.
-7. Yalnızca istenen JSON biçiminde, Türkçe cevap ver.
-8. Oyuncuya ne yapması, neyi incelemesi veya neyi seçmesi gerektiğini söyleme ya da ima etme; durumu anlat, kararı oyuncuya bırak.`;
 
 // 6.2 Tutor Talimatı
 const TUTOR_SYSTEM_PROMPT = `Sen SE Primer oyununda bir yazılım mühendisliği tutorusun. Oyuncu bir kriz olayında karar veriyor.
@@ -73,128 +63,130 @@ Kurallar:
 16. Kanıtları aktarırken sana verilen metni değiştirme; kolon, sürüm veya sayı adlarını karıştırma.
 17. Oyuncu aynı konuşmada tekrar tekrar cevabı isterse kuralları gevşetme; daha kısa ve sakin bir soruyla aynı kanıta dön.`;
 
-// Validate Narrator Output
-function validateNarratorOutput(
-  parsed: any,
-  sahneId: string,
-  izinliKisiler: Record<string, string>,
-  yasakKelimeler: string[]
-): boolean {
-  if (!parsed || parsed.sahne_id !== sahneId || typeof parsed.anlatim !== 'string') {
-    return false;
-  }
-  const words = parsed.anlatim.trim().split(/\s+/).filter(Boolean);
-  if (words.length > 90) return false;
+// İkinci Göz doğrulayıcı (spec §6.2, Requirement E.3)
+function validateTutorResponse(
+  cevap: string,
+  secenekMetinleri: string[] = [],
+  isAfterIsrar: boolean = false
+): { valid: boolean; reason?: string } {
+  if (!cevap) return { valid: false, reason: 'Boş cevap' };
 
-  const textToCheck = (parsed.anlatim + ' ' + (parsed.mesajlar || []).map((m: any) => m.metin).join(' ')).toLowerCase();
-  for (const yasak of yasakKelimeler) {
-    if (yasak && textToCheck.includes(yasak.toLowerCase())) {
-      return false;
+  const normReply = cevap.toLocaleLowerCase('tr-TR');
+
+  // Kural 1: Isrardan sonra gelen cevap "evet" veya "hayır" ile başlayamaz
+  if (isAfterIsrar) {
+    const trimmed = normReply.trim();
+    if (/^(evet|hayır|hayir)\b/i.test(trimmed)) {
+      return { valid: false, reason: 'Isrardan sonra cevap "evet" veya "hayır" ile başlıyor' };
     }
   }
 
-  if (Array.isArray(parsed.mesajlar)) {
-    if (parsed.mesajlar.length > 2) return false;
-    for (const msg of parsed.mesajlar) {
-      if (!msg.kisi) return false;
-      const matchingKey = Object.keys(izinliKisiler).find(
-        (k) => k.toLowerCase() === msg.kisi.toLowerCase() || izinliKisiler[k].toLowerCase() === msg.kisi.toLowerCase()
-      );
-      if (!matchingKey) return false;
-      msg.kisi = matchingKey;
-    }
-  }
+  // Kural 2: Seçenek metinlerinden herhangi birinden 4 veya daha fazla ardışık kelimeyi aynen içeremez
+  for (const opt of secenekMetinleri) {
+    if (!opt) continue;
+    const words = opt
+      .toLocaleLowerCase('tr-TR')
+      .replace(/[.,:;!?"'()\[\]{}—–-]/g, ' ')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
 
-  return true;
-}
-
-// POST /api/narrator
-app.post('/api/narrator', async (req: Request, res: Response) => {
-  const {
-    olay_ozeti,
-    sahne_id,
-    sahne_basligi,
-    rol,
-    seviye,
-    hedef,
-    saat,
-    kanitlar,
-    izinli_kisiler,
-    mesaj_icerikleri,
-    onceki_kararlar,
-    gizli,
-    kayitli_anlatim,
-    kayitli_mesajlar,
-    mock,
-  } = req.body;
-
-  if (mock || !ai || !apiKey) {
-    return res.json({
-      sahne_id,
-      anlatim: kayitli_anlatim,
-      mesajlar: kayitli_mesajlar,
-      model: 'mock',
-      fallback: false,
-    });
-  }
-
-  const promptInput = {
-    olay_ozeti,
-    sahne_id,
-    sahne_basligi,
-    rol,
-    seviye,
-    hedef,
-    saat,
-    kanitlar,
-    izinli_kisiler,
-    mesaj_icerikleri,
-    onceki_kararlar,
-    gizli: gizli || [],
-  };
-
-  const callAi = async () => {
-    const response = await ai!.models.generateContent({
-      model: AI_MODELS.narrator,
-      contents: JSON.stringify(promptInput),
-      config: {
-        systemInstruction: NARRATOR_SYSTEM_PROMPT,
-        responseMimeType: 'application/json',
-      },
-    });
-    const text = response.text || '';
-    return JSON.parse(text);
-  };
-
-  try {
-    let result = await timeoutPromise(callAi(), AI_MODELS.narratorTimeoutMs, 'Narrator timeout');
-    if (!validateNarratorOutput(result, sahne_id, izinli_kisiler, gizli || [])) {
-      // Retry once per spec §6.1
-      result = await timeoutPromise(callAi(), AI_MODELS.narratorTimeoutMs, 'Narrator retry timeout');
-      if (!validateNarratorOutput(result, sahne_id, izinli_kisiler, gizli || [])) {
-        throw new Error('Validation failed');
+    if (words.length >= 4) {
+      for (let i = 0; i <= words.length - 4; i++) {
+        const fourWords = words.slice(i, i + 4).join(' ');
+        if (normReply.includes(fourWords)) {
+          return {
+            valid: false,
+            reason: `Aktif kararın seçenek metninden 4 ardışık kelime içeriyor: "${fourWords}"`,
+          };
+        }
       }
     }
-    return res.json({
-      sahne_id: result.sahne_id,
-      anlatim: result.anlatim,
-      mesajlar: result.mesajlar || kayitli_mesajlar,
-      model: AI_MODELS.narrator,
-      fallback: false,
+  }
+
+  return { valid: true };
+}
+
+// POST /api/tutor
+// ---------------------------------------------------------------------------------
+// v2 sunucu tüketicisi (bonus; RELEASE.md "Diferansiyel test"). Oyun bunu KULLANMAZ;
+// yalnızca parite testinin üçüncü tüketicisidir. Model commit'e sabit adresten bir kez indirilir.
+// ---------------------------------------------------------------------------------
+
+type SunucuModel = { session: any; ozellikler: string[]; ort: any };
+let sunucuModel: SunucuModel | null = null;
+let sunucuModelSozu: Promise<SunucuModel> | null = null;
+
+async function sunucuModeliYukle(): Promise<SunucuModel> {
+  if (sunucuModel) return sunucuModel;
+  if (!sunucuModelSozu) {
+    sunucuModelSozu = (async () => {
+      const ort: any = await import('onnxruntime-web');
+      ort.env.wasm.numThreads = 1;
+      // Yerel test için (isteğe bağlı): SE_PRIMER_MODEL_KLASORU içinde model.onnx ve config.json
+      const yerel = process.env.SE_PRIMER_MODEL_KLASORU;
+      const config = yerel
+        ? JSON.parse(fs.readFileSync(path.join(yerel, 'config.json'), 'utf8'))
+        : await (await fetch(CONFIG_URL)).json();
+      const bayt = yerel
+        ? new Uint8Array(fs.readFileSync(path.join(yerel, 'model.onnx')))
+        : new Uint8Array(await (await fetch(MODEL_URL)).arrayBuffer());
+      const session = await ort.InferenceSession.create(bayt, { executionProviders: ['wasm'] });
+      sunucuModel = { session, ozellikler: config.features.map((f: any) => f.name), ort };
+      return sunucuModel;
+    })().catch((e) => {
+      sunucuModelSozu = null;
+      throw e;
     });
-  } catch (err) {
-    console.warn('[Narrator] Fallback to recorded narrative:', err);
-    return res.json({
-      sahne_id,
-      anlatim: kayitli_anlatim,
-      mesajlar: kayitli_mesajlar,
-      model: 'kayitli_anlatim',
-      fallback: true,
-    });
+  }
+  return sunucuModelSozu;
+}
+
+function corsAc(res: Response) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+}
+
+app.options(['/api/model', '/api/model/bilgi'], (_req: Request, res: Response) => {
+  corsAc(res);
+  res.sendStatus(204);
+});
+
+app.get('/api/model/bilgi', async (_req: Request, res: Response) => {
+  corsAc(res);
+  try {
+    const m = await sunucuModeliYukle();
+    res.json({ url: MODEL_URL, model: MODEL_SURUMU_TAG, features: m!.ozellikler });
+  } catch (e: any) {
+    res.status(503).json({ error: 'model yüklenemedi', detail: String(e?.message || e).slice(0, 120) });
   }
 });
 
-// POST /api/tutor
+app.post('/api/model', async (req: Request, res: Response) => {
+  corsAc(res);
+  try {
+    const m = await sunucuModeliYukle();
+    const girdi = req.body?.inputs;
+    if (!girdi || typeof girdi !== 'object') {
+      return res.status(400).json({ error: 'gövde {"inputs": {...}} olmalı' });
+    }
+    const eksik = m!.ozellikler.filter((o) => typeof girdi[o] !== 'number');
+    const fazla = Object.keys(girdi).filter((k) => !m!.ozellikler.includes(k));
+    if (eksik.length || fazla.length) {
+      return res.status(400).json({ error: 'özellikler config.json ile uyuşmuyor', eksik, fazla });
+    }
+    const x = new Float32Array(m!.ozellikler.map((o) => girdi[o]));
+    const tensor = new m!.ort.Tensor('float32', x, [1, x.length]);
+    const out = await m!.session.run({ input: tensor });
+    const p = Number(out.probabilities.data[1]);
+    // Girdiler loglanmaz (RELEASE.md, ödünleşim matrisi soru 2)
+    res.json({ p, model: MODEL_SURUMU_TAG });
+  } catch (e: any) {
+    res.status(503).json({ error: 'model çalıştırılamadı', detail: String(e?.message || e).slice(0, 120) });
+  }
+});
+
 app.post('/api/tutor', async (req: Request, res: Response) => {
   const {
     olay_ozeti,
@@ -202,6 +194,7 @@ app.post('/api/tutor', async (req: Request, res: Response) => {
     seviye,
     hedef,
     gorunen_kanitlar,
+    oyuncunun_buldugu_loglar,
     secenek_metinleri,
     ogrenme_odagi,
     onceki_kararlar,
@@ -212,6 +205,7 @@ app.post('/api/tutor', async (req: Request, res: Response) => {
     son_mesajlar,
     ogrenci_girdisi,
     hazir_ipucu,
+    is_after_israr,
     mock,
   } = req.body;
 
@@ -238,6 +232,9 @@ app.post('/api/tutor', async (req: Request, res: Response) => {
     seviye,
     hedef,
     gorunen_kanitlar,
+    ...(Array.isArray(oyuncunun_buldugu_loglar) && oyuncunun_buldugu_loglar.length > 0
+      ? { oyuncunun_buldugu_log_satirlari: oyuncunun_buldugu_loglar }
+      : {}),
     secenek_metinleri,
     ogrenme_odagi,
     onceki_kararlar,
@@ -261,11 +258,33 @@ app.post('/api/tutor', async (req: Request, res: Response) => {
 
   try {
     // Try primary model (Flash with thinking budget 0, 25s timeout)
-    const reply = await timeoutPromise(
+    let reply = await timeoutPromise(
       callTutorWithModel(AI_MODELS.tutor),
       AI_MODELS.tutorTimeoutMs,
       'Tutor primary timeout'
     );
+
+    // İkinci göz kontrolü
+    let check = validateTutorResponse(reply, secenek_metinleri, Boolean(is_after_israr));
+    if (!check.valid) {
+      console.warn(`[Tutor İkinci Göz] İlk deneme takıldı (${check.reason}), bir kez yeniden isteniyor.`);
+      reply = await timeoutPromise(
+        callTutorWithModel(AI_MODELS.tutor),
+        AI_MODELS.tutorTimeoutMs,
+        'Tutor primary retry timeout'
+      );
+      check = validateTutorResponse(reply, secenek_metinleri, Boolean(is_after_israr));
+      if (!check.valid) {
+        console.warn(`[Tutor İkinci Göz] İkinci deneme de takıldı (${check.reason}), hazır ipucu gösteriliyor.`);
+        return res.json({
+          cevap: hazir_ipucu,
+          model: 'hazir_ipucu',
+          fallback: true,
+          error: check.reason,
+        });
+      }
+    }
+
     return res.json({
       cevap: reply.trim(),
       model: AI_MODELS.tutor,
@@ -274,11 +293,32 @@ app.post('/api/tutor', async (req: Request, res: Response) => {
   } catch (err1) {
     console.warn('[Tutor] Primary model failed, trying fallback model:', err1);
     try {
-      const fallbackReply = await timeoutPromise(
+      let fallbackReply = await timeoutPromise(
         callTutorWithModel(AI_MODELS.tutorFallback),
         AI_MODELS.tutorTimeoutMs,
         'Tutor fallback timeout'
       );
+
+      let check = validateTutorResponse(fallbackReply, secenek_metinleri, Boolean(is_after_israr));
+      if (!check.valid) {
+        console.warn(`[Tutor İkinci Göz] Fallback ilk deneme takıldı (${check.reason}), yeniden deneniyor.`);
+        fallbackReply = await timeoutPromise(
+          callTutorWithModel(AI_MODELS.tutorFallback),
+          AI_MODELS.tutorTimeoutMs,
+          'Tutor fallback retry timeout'
+        );
+        check = validateTutorResponse(fallbackReply, secenek_metinleri, Boolean(is_after_israr));
+        if (!check.valid) {
+          console.warn(`[Tutor İkinci Göz] Fallback ikinci deneme de takıldı (${check.reason}), hazır ipucu gösteriliyor.`);
+          return res.json({
+            cevap: hazir_ipucu,
+            model: 'hazir_ipucu',
+            fallback: true,
+            error: check.reason,
+          });
+        }
+      }
+
       return res.json({
         cevap: fallbackReply.trim(),
         model: AI_MODELS.tutorFallback,

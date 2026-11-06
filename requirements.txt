@@ -1,0 +1,8 @@
+# SE Primer v2 — eğitim ve parite testi (Python 3.12+)
+scikit-learn==1.9.1
+skl2onnx==1.20.0
+onnx
+onnxruntime
+pandas
+numpy
+huggingface_hub

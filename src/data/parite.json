@@ -1,0 +1,101 @@
+{
+  "aciklama": "Diferansiyel (parite) testi referans girdileri. Özellik sırası model/config.json -> features ile aynı. 'p' alanlarını Test Kahini (tests/parite.py) yazar; uygulama ?parite=1 sayfasında aynı girdileri hesaplar, Cypress farkın 1e-4'ten küçük olduğunu kontrol eder.",
+  "tolerans": 0.0001,
+  "model": {
+    "kaynak": "https://huggingface.co/iburakyilmaz/se-primer-kotu-son/resolve/c623127a5ea85535de658940a1519b0f721c3471/model.onnx",
+    "commit": "c623127a5ea85535de658940a1519b0f721c3471",
+    "sha256": "6f9dedcefdb53db43ce606aed23b6c108fa8abadb0ed54029ae0626ccb11e789"
+  },
+  "girdiler": [
+    {
+      "id": "R0",
+      "ad": "Kanıtçı, deneyimli, ilk karar",
+      "x": {
+        "seviye": 1,
+        "rol": 0,
+        "karar_no": 1,
+        "karar_suresi_sn": 41.5,
+        "konsol_arama": 3,
+        "bulunan_anlamli": 2,
+        "terim_toplam": 0,
+        "tutor_toplam": 0,
+        "israr_toplam": 0,
+        "sorunlu_karar_toplam": 0,
+        "kalan_sure_dk": 85
+      },
+      "p": 0.225285
+    },
+    {
+      "id": "R1",
+      "ad": "Kabul örneği 9 / Oyuncu A: S1'de geri döndü, S1R'de ileri döndü, S2'de SMS adımını kapattı, S2R'de görünüm; her kararı 10 sn içinde ve aramadan verdi; S3'e geliyor",
+      "x": {
+        "seviye": 1,
+        "rol": 0,
+        "karar_no": 4,
+        "karar_suresi_sn": 6.0,
+        "konsol_arama": 0,
+        "bulunan_anlamli": 0,
+        "terim_toplam": 0,
+        "tutor_toplam": 0,
+        "israr_toplam": 0,
+        "sorunlu_karar_toplam": 2,
+        "kalan_sure_dk": 50
+      },
+      "p": 0.842032
+    },
+    {
+      "id": "R2",
+      "ad": "Kabul örneği 9 / Oyuncu B: S1'de inceledi, S2'de görünüm; konsolda arayıp iki anlamlı satır işaretledi; S3'e geliyor",
+      "x": {
+        "seviye": 1,
+        "rol": 0,
+        "karar_no": 2,
+        "karar_suresi_sn": 38.0,
+        "konsol_arama": 2,
+        "bulunan_anlamli": 2,
+        "terim_toplam": 0,
+        "tutor_toplam": 0,
+        "israr_toplam": 0,
+        "sorunlu_karar_toplam": 0,
+        "kalan_sure_dk": 60
+      },
+      "p": 0.146062
+    },
+    {
+      "id": "R3",
+      "ad": "Yeni başlayan takım lideri, tutora ısrar etti",
+      "x": {
+        "seviye": 0,
+        "rol": 1,
+        "karar_no": 3,
+        "karar_suresi_sn": 22.4,
+        "konsol_arama": 1,
+        "bulunan_anlamli": 0,
+        "terim_toplam": 3,
+        "tutor_toplam": 4,
+        "israr_toplam": 2,
+        "sorunlu_karar_toplam": 1,
+        "kalan_sure_dk": 55
+      },
+      "p": 0.255675
+    },
+    {
+      "id": "R4",
+      "ad": "Zaman aşımı ve iki sorunlu karardan sonra, bütçe daralmış",
+      "x": {
+        "seviye": 1,
+        "rol": 1,
+        "karar_no": 5,
+        "karar_suresi_sn": 60.0,
+        "konsol_arama": 0,
+        "bulunan_anlamli": 0,
+        "terim_toplam": 1,
+        "tutor_toplam": 1,
+        "israr_toplam": 0,
+        "sorunlu_karar_toplam": 3,
+        "kalan_sure_dk": 10
+      },
+      "p": 0.938691
+    }
+  ]
+}

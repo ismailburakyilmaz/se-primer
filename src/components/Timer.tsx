@@ -5,10 +5,11 @@ interface Props {
   isPaused: boolean;
   onTimeout: () => void;
   resetKey: any;
+  sureSn?: number;
 }
 
-export const Timer: React.FC<Props> = ({ isActive, isPaused, onTimeout, resetKey }) => {
-  const [secondsLeft, setSecondsLeft] = useState(60);
+export const Timer: React.FC<Props> = ({ isActive, isPaused, onTimeout, resetKey, sureSn = 60 }) => {
+  const [secondsLeft, setSecondsLeft] = useState(sureSn);
   const [isTabHidden, setIsTabHidden] = useState(
     typeof document !== 'undefined' ? document.hidden : false
   );
@@ -33,9 +34,9 @@ export const Timer: React.FC<Props> = ({ isActive, isPaused, onTimeout, resetKey
 
   // Reset when resetKey changes (new scene visit)
   useEffect(() => {
-    setSecondsLeft(60);
+    setSecondsLeft(sureSn);
     hasTimedOutRef.current = false;
-  }, [resetKey]);
+  }, [resetKey, sureSn]);
 
   useEffect(() => {
     // If not active, paused, tab hidden, or already timed out in this visit, do nothing
@@ -58,13 +59,24 @@ export const Timer: React.FC<Props> = ({ isActive, isPaused, onTimeout, resetKey
     return () => clearInterval(timer);
   }, [isActive, isPaused, isTabHidden]);
 
+  // Son 3 saniyede kısa titreşim (telefonda)
+  useEffect(() => {
+    if (!isActive || isPaused || secondsLeft > 3 || secondsLeft < 1) return;
+    const azHareket = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!azHareket && navigator.vibrate) {
+      try {
+        navigator.vibrate(40);
+      } catch {}
+    }
+  }, [secondsLeft, isActive, isPaused]);
+
   if (!isActive) return null;
 
   const isLow = secondsLeft <= 10;
   const strokeColor = isLow ? 'var(--pas)' : 'var(--tukenmez)';
   const radius = 16;
   const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (secondsLeft / 60) * circumference;
+  const strokeDashoffset = circumference - (secondsLeft / sureSn) * circumference;
 
   return (
     <div
@@ -72,7 +84,7 @@ export const Timer: React.FC<Props> = ({ isActive, isPaused, onTimeout, resetKey
       className="flex items-center gap-1.5 bg-[var(--fis)] border border-[var(--cizgi)] rounded-[4px] px-2 py-1 select-none"
       title="Karar için kalan süre"
     >
-      <svg className="w-5 h-5 -rotate-90 transform" viewBox="0 0 40 40">
+      <svg className={`w-5 h-5 -rotate-90 transform ${isLow && !isPaused ? 'animate-nabiz' : ''}`} viewBox="0 0 40 40">
         <circle
           cx="20"
           cy="20"
